@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"}]
+      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"},{"name":"inventory","path":"/inventory","upstream":"http://inventory:8000"}]
       - ENV=development
     depends_on:
       - auth
@@ -53,12 +53,30 @@ services:
     env_file:
       - .env
     volumes:
+      - ./docker/postgres:/docker-entrypoint-initdb.d
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  inventory:
+    build:
+      context: ./apps/inventory-service
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8002:8000"
+    env_file:
+      - .env
+    environment:
+      - INVENTORY_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/inventory
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   web_node_modules: {}

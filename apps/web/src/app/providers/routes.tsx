@@ -16,6 +16,8 @@ import { InventoryReportsPage } from '@/pages/InventoryReportsPage/ui/InventoryR
 import { InventoryReportDetailPage } from '@/pages/InventoryReportsPage/ui/InventoryReportDetailPage'
 import { AdminCabinetsPage } from '@/pages/AdminCabinetsPage/ui/AdminCabinetsPage'
 import { AdminUsersPage } from '@/pages/AdminUsersPage/ui/AdminUsersPage'
+import { AdminInventoryPage } from '@/pages/AdminInventoryPage/ui/AdminInventoryPage'
+import { AdminInventoryCreatePage } from '@/pages/AdminInventoryCreatePage/ui/AdminInventoryCreatePage'
 import { RequireAdmin } from '@/app/providers/RequireAdmin'
 import { RequireAuth } from '@/app/providers/RequireAuth'
 
@@ -116,6 +118,22 @@ export function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminUsersPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/inventory"
+        element={
+          <RequireAdmin>
+            <AdminInventoryPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/inventory/create"
+        element={
+          <RequireAdmin>
+            <AdminInventoryCreatePage />
           </RequireAdmin>
         }
       />

@@ -21,6 +21,10 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
         },
+        '/inventory': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
       },
     },
     preview: {

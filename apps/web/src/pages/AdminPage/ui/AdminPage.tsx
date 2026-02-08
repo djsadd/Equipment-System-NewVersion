@@ -6,31 +6,13 @@ import { clearTokens } from '@/shared/lib/authStorage'
 
 type AdminSection =
   | 'cabinets'
-  | 'reports'
   | 'users'
-  | 'operations'
   | 'inventory'
-  | 'equipment'
-  | 'cartridges'
-  | 'printers'
-  | 'computers'
-  | 'departments'
-  | 'barcodes'
-  | 'qrcodes'
 
 const adminModules: { id: AdminSection; title: string; desc: string }[] = [
   { id: 'cabinets', title: 'Кабинеты', desc: 'Карточки кабинетов, ответственные, статусы.' },
-  { id: 'reports', title: 'Отчеты', desc: 'Шаблоны, периоды, статусы.' },
   { id: 'users', title: 'Пользователи', desc: 'Роли, доступы, команды.' },
-  { id: 'operations', title: 'Операции', desc: 'Выдачи, возвраты, списания.' },
-  { id: 'inventory', title: 'Инвентаризация', desc: 'Планы, прогресс, итоги.' },
-  { id: 'equipment', title: 'Оборудование', desc: 'Категории, учет, свойства.' },
-  { id: 'cartridges', title: 'Картриджи', desc: 'Складские остатки и состояние.' },
-  { id: 'printers', title: 'Принтеры', desc: 'Модели, статусы, локации.' },
-  { id: 'computers', title: 'Компьютеры', desc: 'Серийные номера и владельцы.' },
-  { id: 'departments', title: 'Отделы', desc: 'Структура и ответственные.' },
-  { id: 'barcodes', title: 'Штрих-коды', desc: 'Печать, привязка, статусы.' },
-  { id: 'qrcodes', title: 'QR-коды', desc: 'Печать, привязка, статусы.' },
+  { id: 'inventory', title: 'Инвентарь', desc: 'Планы, прогресс, итоги.' },
 ]
 
 export function AdminPage() {
@@ -71,7 +53,6 @@ export function AdminPage() {
           <header className="admin__header">
             <div>
               <h1>Администрирование</h1>
-              <p>Создание компьютеров, кабинетов и типов кабинетов</p>
             </div>
           </header>
 
@@ -87,6 +68,9 @@ export function AdminPage() {
                   }
                   if (module.id === 'users') {
                     navigate('/admin/users')
+                  }
+                  if (module.id === 'inventory') {
+                    navigate('/admin/inventory')
                   }
                 }}
               >
