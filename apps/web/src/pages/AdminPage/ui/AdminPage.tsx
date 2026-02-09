@@ -8,9 +8,11 @@ type AdminSection =
   | 'cabinets'
   | 'users'
   | 'inventory'
+  | 'departments'
 
 const adminModules: { id: AdminSection; title: string; desc: string }[] = [
   { id: 'cabinets', title: 'Кабинеты', desc: 'Карточки кабинетов, ответственные, статусы.' },
+  { id: 'departments', title: 'Департаменты', desc: 'Справочник отделов и привязка к локациям.' },
   { id: 'users', title: 'Пользователи', desc: 'Роли, доступы, команды.' },
   { id: 'inventory', title: 'Инвентарь', desc: 'Планы, прогресс, итоги.' },
 ]
@@ -65,6 +67,9 @@ export function AdminPage() {
                 onClick={() => {
                   if (module.id === 'cabinets') {
                     navigate('/admin/cabinets')
+                  }
+                  if (module.id === 'departments') {
+                    navigate('/admin/departments')
                   }
                   if (module.id === 'users') {
                     navigate('/admin/users')

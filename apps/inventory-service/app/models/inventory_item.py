@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.models.inventory_status import InventoryStatus
 
 if TYPE_CHECKING:
     from app.models.barcode import Barcode
@@ -20,13 +21,21 @@ class InventoryItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    image: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    image: Mapped[str | None] = mapped_column(Text, nullable=True)
     barcode_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("barcodes.id"), unique=True, nullable=True
     )
     location_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     responsible_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
-    status: Mapped[str | None] = mapped_column(String(50), index=True, nullable=True)
+    status: Mapped[InventoryStatus | None] = mapped_column(
+        Enum(
+            InventoryStatus,
+            name="inventory_status",
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
+        index=True,
+        nullable=True,
+    )
     category: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
     last_inventory_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

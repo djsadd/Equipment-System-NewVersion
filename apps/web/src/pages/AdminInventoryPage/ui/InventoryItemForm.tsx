@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AdminUser } from '@/shared/api/admin'
+import type { Cabinet } from '@/shared/api/cabinets'
 import type { InventoryItem, InventoryType } from '@/shared/api/inventory'
 
 export type InventoryItemFormPayload = {
@@ -16,6 +17,15 @@ export type InventoryItemFormPayload = {
   inventory_type_id?: number | null
 }
 
+const INVENTORY_STATUS_OPTIONS = [
+  'Новое',
+  'В ремонте',
+  'Отремонтировано',
+  'Списано',
+  'На складе',
+  'Выдано',
+]
+
 type InventoryItemFormProps = {
   types: InventoryType[]
   initial?: InventoryItem
@@ -25,6 +35,9 @@ type InventoryItemFormProps = {
   users?: AdminUser[]
   usersLoading?: boolean
   usersError?: string | null
+  locations?: Cabinet[]
+  locationsLoading?: boolean
+  locationsError?: string | null
   onSubmit: (payload: InventoryItemFormPayload) => void
   onCancel: () => void
   busy?: boolean
@@ -47,6 +60,14 @@ function getUserMeta(user: AdminUser) {
   return `${user.email} · ${department}`
 }
 
+function getLocationLabel(location: Cabinet) {
+  return location.name
+}
+
+function getLocationMeta(location: Cabinet) {
+  return `${location.room_type}${location.status ? ` · ${location.status}` : ''}`
+}
+
 export function InventoryItemForm({
   types,
   initial,
@@ -56,6 +77,9 @@ export function InventoryItemForm({
   users,
   usersLoading,
   usersError,
+  locations,
+  locationsLoading,
+  locationsError,
   onSubmit,
   onCancel,
   busy,
@@ -64,7 +88,9 @@ export function InventoryItemForm({
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [image, setImage] = useState(initial?.image ?? '')
-  const [barcodeId, setBarcodeId] = useState(initial?.barcode_id ? String(initial.barcode_id) : '')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageName, setImageName] = useState('')
+  const [imagePreview, setImagePreview] = useState(initial?.image ?? '')
   const [locationId, setLocationId] = useState(
     initial?.location_id ? String(initial.location_id) : ''
   )
@@ -73,8 +99,12 @@ export function InventoryItemForm({
   )
   const [responsibleSearch, setResponsibleSearch] = useState('')
   const [showUserList, setShowUserList] = useState(false)
+  const [locationSearch, setLocationSearch] = useState('')
+  const [showLocationList, setShowLocationList] = useState(false)
   const [status, setStatus] = useState(initial?.status ?? '')
   const [category, setCategory] = useState(initial?.category ?? '')
+  const [categorySearch, setCategorySearch] = useState('')
+  const [showCategoryList, setShowCategoryList] = useState(false)
   const [lastInventoryAt, setLastInventoryAt] = useState(initial?.last_inventory_at ?? '')
   const [lastAuditAt, setLastAuditAt] = useState(initial?.last_audit_at ?? '')
   const [inventoryTypeId, setInventoryTypeId] = useState(
@@ -91,6 +121,26 @@ export function InventoryItemForm({
     }
   }, [users, responsibleId])
 
+  useEffect(() => {
+    if (!locations || !locationId) {
+      return
+    }
+    const selected = locations.find((location) => String(location.id) === locationId)
+    if (selected) {
+      setLocationSearch(getLocationLabel(selected))
+    }
+  }, [locations, locationId])
+
+  useEffect(() => {
+    if (!types || !category) {
+      return
+    }
+    const selected = types.find((type) => type.name === category)
+    if (selected) {
+      setCategorySearch(selected.name)
+    }
+  }, [types, category])
+
   const filteredUsers = useMemo(() => {
     if (!users) {
       return []
@@ -106,13 +156,44 @@ export function InventoryItemForm({
     return candidates.slice(0, 8)
   }, [users, responsibleSearch])
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const filteredLocations = useMemo(() => {
+    if (!locations) {
+      return []
+    }
+    const query = locationSearch.trim().toLowerCase()
+    const candidates = query
+      ? locations.filter((location) => {
+          const label = getLocationLabel(location).toLowerCase()
+          const meta = getLocationMeta(location).toLowerCase()
+          return label.includes(query) || meta.includes(query)
+        })
+      : locations
+    return candidates.slice(0, 8)
+  }, [locations, locationSearch])
+
+  const filteredCategories = useMemo(() => {
+    const query = categorySearch.trim().toLowerCase()
+    const candidates = query
+      ? types.filter((type) => type.name.toLowerCase().includes(query))
+      : types
+    return candidates.slice(0, 8)
+  }, [types, categorySearch])
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    let imageValue = image || undefined
+    if (imageFile) {
+      imageValue = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(new Error('file_read_failed'))
+        reader.readAsDataURL(imageFile)
+      })
+    }
     onSubmit({
       title: title || undefined,
       description: description || undefined,
-      image: image || undefined,
-      barcode_id: barcodeId ? Number(barcodeId) : undefined,
+      image: imageValue || undefined,
       location_id: locationId ? Number(locationId) : undefined,
       responsible_id: responsibleId ? Number(responsibleId) : undefined,
       status: status || undefined,
@@ -138,31 +219,139 @@ export function InventoryItemForm({
       </label>
       <label>
         Категория
-        <input value={category} onChange={(event) => setCategory(event.target.value)} />
+        {types.length > 0 ? (
+          <div className="inventory-user-picker">
+            <input
+              value={categorySearch}
+              onChange={(event) => {
+                setCategorySearch(event.target.value)
+                setCategory('')
+              }}
+              onFocus={() => setShowCategoryList(true)}
+              onBlur={() => {
+                window.setTimeout(() => setShowCategoryList(false), 120)
+              }}
+              placeholder="Тип инвентаря"
+            />
+            {showCategoryList && filteredCategories.length > 0 && (
+              <div className="inventory-user-picker__list">
+                {filteredCategories.map((type) => (
+                  <button
+                    key={type.id}
+                    type="button"
+                    className="inventory-user-picker__option"
+                    onClick={() => {
+                      setCategory(type.name)
+                      setCategorySearch(type.name)
+                      setShowCategoryList(false)
+                    }}
+                  >
+                    <span className="inventory-user-picker__name">{type.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {category && <div className="inventory-user-picker__value">Выбрано: {category}</div>}
+          </div>
+        ) : (
+          <input value={category} onChange={(event) => setCategory(event.target.value)} />
+        )}
       </label>
       <label>
         Статус
-        <input value={status} onChange={(event) => setStatus(event.target.value)} />
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">Не выбран</option>
+          {INVENTORY_STATUS_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
-        Ссылка на изображение
-        <input value={image} onChange={(event) => setImage(event.target.value)} />
-      </label>
-      <label>
-        Штрихкод ID
-        <input
-          value={barcodeId}
-          onChange={(event) => setBarcodeId(event.target.value)}
-          inputMode="numeric"
-        />
+        Изображение
+        <div className="inventory-image-field">
+          <input
+            type="file"
+            accept="image/*"
+            id="inventory-image"
+            className="inventory-image-input"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null
+              setImageFile(file)
+              setImageName(file?.name ?? '')
+              if (file) {
+                const url = URL.createObjectURL(file)
+                setImagePreview(url)
+                setImage('')
+              } else {
+                setImagePreview('')
+              }
+            }}
+          />
+          <div className="inventory-image-actions">
+            <label htmlFor="inventory-image" className="inventory-image-button">
+              Выбрать файл
+            </label>
+            <span className="inventory-image-name">{imageName || 'Файл не выбран'}</span>
+          </div>
+          {imagePreview && (
+            <div className="inventory-image-preview">
+              <img src={imagePreview} alt="preview" />
+            </div>
+          )}
+        </div>
       </label>
       <label>
         Локация ID
-        <input
-          value={locationId}
-          onChange={(event) => setLocationId(event.target.value)}
-          inputMode="numeric"
-        />
+        {locations ? (
+          <div className="inventory-user-picker">
+            <input
+              value={locationSearch}
+              onChange={(event) => {
+                setLocationSearch(event.target.value)
+                setLocationId('')
+              }}
+              onFocus={() => setShowLocationList(true)}
+              onBlur={() => {
+                window.setTimeout(() => setShowLocationList(false), 120)
+              }}
+              placeholder="Номер, тип или статус кабинета"
+            />
+            {locationsLoading && <div className="inventory-user-picker__hint">Загрузка кабинетов...</div>}
+            {!locationsLoading && locationsError && (
+              <div className="inventory-user-picker__error">{locationsError}</div>
+            )}
+            {!locationsLoading && !locationsError && showLocationList && filteredLocations.length > 0 && (
+              <div className="inventory-user-picker__list">
+                {filteredLocations.map((location) => (
+                  <button
+                    key={location.id}
+                    type="button"
+                    className="inventory-user-picker__option"
+                    onClick={() => {
+                      setLocationId(String(location.id))
+                      setLocationSearch(getLocationLabel(location))
+                      setShowLocationList(false)
+                    }}
+                  >
+                    <span className="inventory-user-picker__name">{getLocationLabel(location)}</span>
+                    <span className="inventory-user-picker__meta">{getLocationMeta(location)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {locationId && (
+              <div className="inventory-user-picker__value">Выбрано: ID {locationId}</div>
+            )}
+          </div>
+        ) : (
+          <input
+            value={locationId}
+            onChange={(event) => setLocationId(event.target.value)}
+            inputMode="numeric"
+          />
+        )}
       </label>
       <label>
         Ответственный (user_id)

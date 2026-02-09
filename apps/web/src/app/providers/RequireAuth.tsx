@@ -10,7 +10,7 @@ export function RequireAuth({ children }: RequireAuthProps) {
   const location = useLocation()
 
   if (!hasValidAccessToken()) {
-    return <Navigate to="/" replace state={{ from: location.pathname }} />
+    return <Navigate to="/401" replace state={{ from: location.pathname }} />
   }
 
   return children

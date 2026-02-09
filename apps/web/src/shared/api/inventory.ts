@@ -87,6 +87,14 @@ export function listInventoryItems() {
   return requestInventory<InventoryItem[]>('/items')
 }
 
+export function listMyInventoryItems() {
+  return requestInventory<InventoryItem[]>('/items/my')
+}
+
+export function listInventoryItemsByRoom(roomId: number) {
+  return requestInventory<InventoryItem[]>(`/items/room/${roomId}`)
+}
+
 export function createInventoryItem(payload: {
   title: string
   description?: string | null

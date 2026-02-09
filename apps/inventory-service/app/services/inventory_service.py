@@ -12,6 +12,30 @@ def list_items(db: Session) -> list[InventoryItem]:
     return db.execute(select(InventoryItem).order_by(InventoryItem.id)).scalars().all()
 
 
+def list_items_for_user(user_id: int, db: Session) -> list[InventoryItem]:
+    return (
+        db.execute(
+            select(InventoryItem)
+            .where(InventoryItem.responsible_id == user_id)
+            .order_by(InventoryItem.id)
+        )
+        .scalars()
+        .all()
+    )
+
+
+def list_items_for_location(location_id: int, db: Session) -> list[InventoryItem]:
+    return (
+        db.execute(
+            select(InventoryItem)
+            .where(InventoryItem.location_id == location_id)
+            .order_by(InventoryItem.id)
+        )
+        .scalars()
+        .all()
+    )
+
+
 def get_item(item_id: int, db: Session) -> InventoryItem:
     item = db.get(InventoryItem, item_id)
     if not item:

@@ -15,11 +15,14 @@ import {
   updateInventoryItem,
   updateInventoryType,
 } from '@/shared/api/inventory'
+import { listAdminUsers, type AdminUser } from '@/shared/api/admin'
+import { listCabinets, type Cabinet } from '@/shared/api/cabinets'
 import { InventoryItemForm, type InventoryItemFormPayload } from './InventoryItemForm'
 
 type AdminTab = 'items' | 'types'
 
 type ModalState =
+  | { type: 'item-view'; item: InventoryItem }
   | { type: 'item-edit'; item: InventoryItem }
   | { type: 'type-create' }
   | { type: 'type-edit'; item: InventoryType }
@@ -37,6 +40,12 @@ export function AdminInventoryPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('items')
   const [items, setItems] = useState<InventoryItem[]>([])
   const [types, setTypes] = useState<InventoryType[]>([])
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [usersError, setUsersError] = useState<string | null>(null)
+  const [locations, setLocations] = useState<Cabinet[]>([])
+  const [locationsLoading, setLocationsLoading] = useState(true)
+  const [locationsError, setLocationsError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -79,6 +88,88 @@ export function AdminInventoryPage() {
   }
 
   useEffect(() => loadData(), [])
+
+  useEffect(() => {
+    let active = true
+    setUsersLoading(true)
+    setUsersError(null)
+    listAdminUsers()
+      .then((data) => {
+        if (!active) {
+          return
+        }
+        setUsers(data)
+      })
+      .catch((err) => {
+        if (!active) {
+          return
+        }
+        setUsersError(err instanceof Error ? err.message : 'Не удалось загрузить пользователей')
+      })
+      .finally(() => {
+        if (active) {
+          setUsersLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    setLocationsLoading(true)
+    setLocationsError(null)
+    listCabinets()
+      .then((data) => {
+        if (!active) {
+          return
+        }
+        setLocations(data)
+      })
+      .catch((err) => {
+        if (!active) {
+          return
+        }
+        setLocationsError(err instanceof Error ? err.message : 'Не удалось загрузить кабинеты')
+      })
+      .finally(() => {
+        if (active) {
+          setLocationsLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const usersById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users])
+  const locationsById = useMemo(
+    () => new Map(locations.map((location) => [location.id, location])),
+    [locations]
+  )
+  const typesById = useMemo(() => new Map(types.map((type) => [type.id, type])), [types])
+
+  const getUserLabel = (user: AdminUser) => {
+    if (user.full_name) {
+      return user.full_name
+    }
+    const parts = [user.first_name, user.last_name].filter(Boolean)
+    if (parts.length > 0) {
+      return parts.join(' ')
+    }
+    return user.email
+  }
+
+  const getUserDisplayInfo = (user: AdminUser) => {
+    const name = getUserLabel(user)
+    if (name === user.email) {
+      return user.email
+    }
+    return `${name} · ${user.email}`
+  }
 
   const openTypeCreate = () => {
     setActionError(null)
@@ -228,6 +319,9 @@ export function AdminInventoryPage() {
                           </div>
                         </div>
                         <div className="admin__row-actions">
+                          <button type="button" onClick={() => setModal({ type: 'item-view', item })}>
+                            Просмотр
+                          </button>
                           <button type="button" onClick={() => setModal({ type: 'item-edit', item })}>
                             Редактировать
                           </button>
@@ -298,11 +392,71 @@ export function AdminInventoryPage() {
                 types={types}
                 initial={modal.item}
                 mode="edit"
+                users={users}
+                usersLoading={usersLoading}
+                usersError={usersError}
+                locations={locations}
+                locationsLoading={locationsLoading}
+                locationsError={locationsError}
                 onCancel={() => setModal(null)}
                 onSubmit={(payload) => handleItemSubmit(payload, modal.item.id)}
                 busy={actionBusy}
                 error={actionError}
               />
+            )}
+            {modal.type === 'item-view' && (
+              <>
+                <h2>{modal.item.title}</h2>
+                <p>{modal.item.category || 'Без категории'}</p>
+                <div className="room__modal-grid">
+                  <span>Статус</span>
+                  <strong>{modal.item.status || '—'}</strong>
+                  <span>Тип инвентаря</span>
+                  <strong>
+                    {modal.item.inventory_type_id
+                      ? typesById.get(modal.item.inventory_type_id)?.name ??
+                        `Тип #${modal.item.inventory_type_id}`
+                      : '—'}
+                  </strong>
+                  <span>Категория</span>
+                  <strong>{modal.item.category || '—'}</strong>
+                  <span>Ответственный</span>
+                  <strong>
+                    {modal.item.responsible_id
+                      ? usersById.get(modal.item.responsible_id)
+                        ? getUserDisplayInfo(usersById.get(modal.item.responsible_id)!)
+                        : `ID ${modal.item.responsible_id}`
+                      : '—'}
+                  </strong>
+                  <span>Локация</span>
+                  <strong>
+                    {modal.item.location_id
+                      ? locationsById.get(modal.item.location_id)?.name ??
+                        `Кабинет #${modal.item.location_id}`
+                      : '—'}
+                  </strong>
+                  <span>Последняя инвентаризация</span>
+                  <strong>{modal.item.last_inventory_at || '—'}</strong>
+                  <span>Последний аудит</span>
+                  <strong>{modal.item.last_audit_at || '—'}</strong>
+                  <span>Создан</span>
+                  <strong>{modal.item.created_at || '—'}</strong>
+                  <span>Обновлен</span>
+                  <strong>{modal.item.updated_at || '—'}</strong>
+                </div>
+                {(usersLoading || locationsLoading) && (
+                  <p className="inventory-create__loading">
+                    Подгружаем справочники для отображения
+                  </p>
+                )}
+                {usersError ? <p className="inventory-create__error">{usersError}</p> : null}
+                {locationsError ? <p className="inventory-create__error">{locationsError}</p> : null}
+                <div className="inventory__actions">
+                  <button type="button" onClick={() => setModal(null)}>
+                    Закрыть
+                  </button>
+                </div>
+              </>
             )}
             {modal.type === 'type-create' && (
               <InventoryTypeForm

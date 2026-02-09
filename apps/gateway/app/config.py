@@ -15,7 +15,7 @@ DEFAULT_ROUTES: List[Route] = [
     Route(name="reports", path="/reports", upstream="http://reports:8000"),
     Route(name="invetory", path="/invetory", upstream="http://inventory:8000"),
     Route(name="cabinets", path="/cabinets", upstream="http://cabinets:8000"),
-    Route(name="departments", path="/departments", upstream="http://departments:8000"),
+    Route(name="departments", path="/departments", upstream="http://departments:8000/departments"),
     Route(name="notifications", path="/notifications", upstream="http://notifications:8000"),
     Route(name="analytics", path="/analytics", upstream="http://analytics:8000"),
     Route(name="inventory", path="/inventory", upstream="http://inventory:8000"),

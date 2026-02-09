@@ -9,15 +9,18 @@ import { IssueEquipmentPage } from '@/pages/IssueEquipmentPage/ui/IssueEquipment
 import { ReturnEquipmentPage } from '@/pages/ReturnEquipmentPage/ui/ReturnEquipmentPage'
 import { NotificationsPage } from '@/pages/NotificationsPage/ui/NotificationsPage'
 import { CabinetsPage } from '@/pages/CabinetsPage/ui/CabinetsPage'
-import { RoomAuditPage } from '@/pages/RoomAuditPage/ui/RoomAuditPage'
 import { ReportsPage } from '@/pages/ReportsPage/ui/ReportsPage'
 import { MaintenancePage } from '@/pages/MaintenancePage/ui/MaintenancePage'
 import { InventoryReportsPage } from '@/pages/InventoryReportsPage/ui/InventoryReportsPage'
 import { InventoryReportDetailPage } from '@/pages/InventoryReportsPage/ui/InventoryReportDetailPage'
 import { AdminCabinetsPage } from '@/pages/AdminCabinetsPage/ui/AdminCabinetsPage'
 import { AdminUsersPage } from '@/pages/AdminUsersPage/ui/AdminUsersPage'
+import { AdminDepartmentsPage } from '@/pages/AdminDepartmentsPage/ui/AdminDepartmentsPage'
+import { AdminDepartmentCreatePage } from '@/pages/AdminDepartmentCreatePage/ui/AdminDepartmentCreatePage'
+import { AdminDepartmentDetailPage } from '@/pages/AdminDepartmentDetailPage/ui/AdminDepartmentDetailPage'
 import { AdminInventoryPage } from '@/pages/AdminInventoryPage/ui/AdminInventoryPage'
 import { AdminInventoryCreatePage } from '@/pages/AdminInventoryCreatePage/ui/AdminInventoryCreatePage'
+import { ErrorPage } from '@/pages/ErrorPage/ui/ErrorPage'
 import { RequireAdmin } from '@/app/providers/RequireAdmin'
 import { RequireAuth } from '@/app/providers/RequireAuth'
 
@@ -101,7 +104,7 @@ export function AppRoutes() {
         path="/cabinets/room/:id"
         element={
           <RequireAuth>
-            <RoomAuditPage />
+            <RoomDetailPage />
           </RequireAuth>
         }
       />
@@ -118,6 +121,30 @@ export function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminUsersPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/departments"
+        element={
+          <RequireAdmin>
+            <AdminDepartmentsPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/departments/create"
+        element={
+          <RequireAdmin>
+            <AdminDepartmentCreatePage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/departments/:id"
+        element={
+          <RequireAdmin>
+            <AdminDepartmentDetailPage />
           </RequireAdmin>
         }
       />
@@ -169,6 +196,11 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
+      <Route path="/401" element={<ErrorPage status={401} />} />
+      <Route path="/403" element={<ErrorPage status={403} />} />
+      <Route path="/404" element={<ErrorPage status={404} />} />
+      <Route path="/500" element={<ErrorPage status={500} />} />
+      <Route path="*" element={<ErrorPage status={404} />} />
     </Routes>
   )
 }

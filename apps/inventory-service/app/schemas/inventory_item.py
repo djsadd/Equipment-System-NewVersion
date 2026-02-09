@@ -4,15 +4,17 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.inventory_status import InventoryStatus
+
 
 class InventoryItemBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
-    image: str | None = Field(default=None, max_length=1024)
+    image: str | None = None
     barcode_id: int | None = None
     location_id: int | None = None
     responsible_id: int | None = None
-    status: str | None = Field(default=None, max_length=50)
+    status: InventoryStatus | None = None
     category: str | None = Field(default=None, max_length=100)
     last_inventory_at: datetime | None = None
     last_audit_at: datetime | None = None
@@ -26,11 +28,11 @@ class InventoryItemCreate(InventoryItemBase):
 class InventoryItemUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
-    image: str | None = Field(default=None, max_length=1024)
+    image: str | None = None
     barcode_id: int | None = None
     location_id: int | None = None
     responsible_id: int | None = None
-    status: str | None = Field(default=None, max_length=50)
+    status: InventoryStatus | None = None
     category: str | None = Field(default=None, max_length=100)
     last_inventory_at: datetime | None = None
     last_audit_at: datetime | None = None
@@ -45,7 +47,7 @@ class InventoryItemPublic(BaseModel):
     barcode_id: int | None = None
     location_id: int | None = None
     responsible_id: int | None = None
-    status: str | None = None
+    status: InventoryStatus | None = None
     category: str | None = None
     last_inventory_at: datetime | None = None
     last_audit_at: datetime | None = None

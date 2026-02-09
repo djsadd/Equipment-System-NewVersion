@@ -5,6 +5,7 @@ import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
 import { listAdminUsers, type AdminUser } from '@/shared/api/admin'
 import { getCurrentUser } from '@/shared/api/auth'
+import { listCabinets, type Cabinet } from '@/shared/api/cabinets'
 import { createInventoryItem, listInventoryTypes, type InventoryType } from '@/shared/api/inventory'
 import { InventoryItemForm, type InventoryItemFormPayload } from '@/pages/AdminInventoryPage/ui/InventoryItemForm'
 
@@ -19,10 +20,13 @@ export function AdminInventoryCreatePage() {
   const [reportsOpen, setReportsOpen] = useState(false)
   const [types, setTypes] = useState<InventoryType[]>([])
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [locations, setLocations] = useState<Cabinet[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [usersLoading, setUsersLoading] = useState(true)
   const [usersError, setUsersError] = useState<string | null>(null)
+  const [locationsLoading, setLocationsLoading] = useState(true)
+  const [locationsError, setLocationsError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
   const navigate = useNavigate()
@@ -94,6 +98,36 @@ export function AdminInventoryCreatePage() {
     }
 
     loadUsers()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    const loadLocations = async () => {
+      setLocationsLoading(true)
+      setLocationsError(null)
+      try {
+        const data = await listCabinets()
+        if (!active) {
+          return
+        }
+        setLocations(data)
+      } catch (err) {
+        if (!active) {
+          return
+        }
+        setLocationsError(err instanceof Error ? err.message : 'Не удалось загрузить кабинеты')
+      } finally {
+        if (active) {
+          setLocationsLoading(false)
+        }
+      }
+    }
+
+    loadLocations()
 
     return () => {
       active = false
@@ -198,6 +232,9 @@ export function AdminInventoryCreatePage() {
                   users={users}
                   usersLoading={usersLoading}
                   usersError={usersError}
+                  locations={locations}
+                  locationsLoading={locationsLoading}
+                  locationsError={locationsError}
                   heading="Детали объекта"
                   className="inventory-create__form"
                   onCancel={() => navigate('/admin/inventory')}

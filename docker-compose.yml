@@ -5,10 +5,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"},{"name":"inventory","path":"/inventory","upstream":"http://inventory:8000"}]
+      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"},{"name":"inventory","path":"/inventory","upstream":"http://inventory:8000"},{"name":"cabinets","path":"/cabinets","upstream":"http://location:8000"},{"name":"departments","path":"/departments","upstream":"http://departments:8000/departments"}]
       - ENV=development
     depends_on:
       - auth
+      - location
+      - departments
 
   web:
     build:
@@ -71,6 +73,40 @@ services:
       - .env
     environment:
       - INVENTORY_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/inventory
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  location:
+    build:
+      context: ./apps/location-service
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8003:8000"
+    env_file:
+      - .env
+    environment:
+      - LOCATION_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/location
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  departments:
+    build:
+      context: ./apps/departments-service
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8004:8000"
+    env_file:
+      - .env
+    environment:
+      - DEPARTMENTS_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/departments
     depends_on:
       postgres:
         condition: service_healthy

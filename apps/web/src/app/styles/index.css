@@ -195,6 +195,93 @@ body {
   font-size: 14px;
 }
 
+.error {
+  width: min(980px, 100%);
+  padding: 56px 24px;
+  display: grid;
+  gap: 24px;
+}
+
+.error__card {
+  background: radial-gradient(circle at top left, #fff5f8 0%, #fdf7fa 45%, #ffffff 100%);
+  border: 1px solid #ecd7df;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 30px 70px rgba(29, 18, 23, 0.14);
+  display: grid;
+  gap: 16px;
+}
+
+.error__badge {
+  justify-self: start;
+  background: #6b1f3a;
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.error__card h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: -0.02em;
+}
+
+.error__card p {
+  margin: 0;
+  color: #6f3a4c;
+  font-size: 15px;
+}
+
+.error__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.error__primary,
+.error__secondary {
+  border-radius: 12px;
+  padding: 10px 22px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #d7c9d0;
+}
+
+.error__primary {
+  background: #6b1f3a;
+  color: #ffffff;
+  border-color: #6b1f3a;
+}
+
+.error__secondary {
+  background: #ffffff;
+  color: #6b1f3a;
+}
+
+.error__meta {
+  display: flex;
+  justify-content: space-between;
+  color: #8a6a76;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 720px) {
+  .error__card {
+    padding: 28px;
+  }
+
+  .error__meta {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
 @media (max-width: 720px) {
   .auth__field {
     grid-template-columns: 1fr;
@@ -761,6 +848,12 @@ body {
   box-shadow: 0 0 0 3px rgba(185, 106, 133, 0.18);
 }
 
+.admin__error {
+  margin: 0;
+  font-size: 13px;
+  color: #b3264f;
+}
+
 .modal__close {
   position: absolute;
   top: 14px;
@@ -1071,6 +1164,69 @@ body {
   color: #6a3b4c;
 }
 
+.inventory-image-field {
+  display: grid;
+  gap: 10px;
+}
+
+.inventory-image-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.inventory-image-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.inventory-image-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #f5e8ed;
+  border: 1px solid #eadce3;
+  font-weight: 600;
+  color: #5b2a3b;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inventory-image-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(91, 42, 59, 0.12);
+}
+
+.inventory-image-name {
+  font-size: 12px;
+  color: #6a3b4c;
+}
+
+.inventory-image-preview {
+  border-radius: 14px;
+  border: 1px solid #eadce3;
+  background: #fefbfd;
+  padding: 10px;
+  display: grid;
+  place-items: center;
+}
+
+.inventory-image-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
 .inventory-user-picker__list {
   position: absolute;
   top: calc(100% + 6px);
@@ -1300,16 +1456,17 @@ body {
 
 .my-equipment__report {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
 }
 
 .my-equipment__report > div {
   background: #ffffff;
   border: 1px solid #eadce3;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 10px 20px rgba(36, 38, 51, 0.08);
+  border-radius: 10px;
+  padding: 6px 10px;
+  min-height: 64px;
+  box-shadow: 0 4px 10px rgba(36, 38, 51, 0.05);
 }
 
 .my-equipment__value {
@@ -1786,6 +1943,23 @@ body {
 .room__table-row {
   border-top: 1px solid #edf0f7;
   color: #2d3244;
+}
+
+.room__table-row.is-clickable {
+  cursor: pointer;
+}
+
+.room__table-row.is-clickable:hover {
+  background: #faf6f8;
+}
+
+.room__table.is-three .room__table-head,
+.room__table.is-three .room__table-row {
+  grid-template-columns: 1.6fr 1fr 1fr;
+}
+
+.room__table-row.is-message {
+  grid-template-columns: 1fr;
 }
 
 .room__table-row button {
@@ -2586,11 +2760,16 @@ body {
 .cabinet-admin__table-head,
 .cabinet-admin__table-row {
   display: grid;
-  grid-template-columns: 1.4fr 0.6fr 0.8fr;
+  grid-template-columns: 1.1fr 0.9fr 1fr 0.6fr;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
   font-size: 13px;
+}
+
+.cabinet-admin__table-head span,
+.cabinet-admin__table-row span {
+  white-space: nowrap;
 }
 
 .cabinet-admin__table-head {

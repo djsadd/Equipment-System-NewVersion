@@ -1,75 +1,48 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
+import { getCurrentUser, type CurrentUser } from '@/shared/api/auth'
+import { getMyCabinet, type Cabinet } from '@/shared/api/cabinets'
+import {
+  listInventoryItemsByRoom,
+  listInventoryTypes,
+  type InventoryItem,
+  type InventoryType,
+} from '@/shared/api/inventory'
 
-type ItemStatus = 'found' | 'missing' | 'misplaced'
+type RoomItem = {
+  id: number
+  name: string
+  type: string
+  status: string | null
+  item: InventoryItem
+}
 
-const roomItems = [
-  { name: 'Ноутбук Lenovo ThinkPad T14', owner: 'Аяна Иманова', type: 'Ноутбук', status: 'found' },
-  {
-    name: 'Проектор Epson EB-X41',
-    owner: 'Ерлан Б.',
-    type: 'Проектор',
-    status: 'misplaced',
-  },
-  {
-    name: 'Принтер HP LaserJet 1020',
-    owner: 'Диана Ш.',
-    type: 'Принтер',
-    status: 'missing',
-  },
-  {
-    name: 'Сканер Canon Lide 300',
-    owner: 'Светлана К.',
-    type: 'Сканер',
-    status: 'found',
-  },
-  {
-    name: 'Монитор Dell P2419H',
-    owner: 'Тимур А.',
-    type: 'Монитор',
-    status: 'found',
-  },
-  {
-    name: 'Системный блок HP 400 G6',
-    owner: 'Жанна Т.',
-    type: 'ПК',
-    status: 'missing',
-  },
-  {
-    name: 'Маршрутизатор MikroTik hAP',
-    owner: 'Руслан М.',
-    type: 'Сеть',
-    status: 'misplaced',
-  },
-  {
-    name: 'Клавиатура Logitech K120',
-    owner: 'Ольга Н.',
-    type: 'Периферия',
-    status: 'found',
-  },
-  {
-    name: 'МФУ Canon i-SENSYS',
-    owner: 'Айгерим С.',
-    type: 'МФУ',
-    status: 'found',
-  },
-  {
-    name: 'Колонки Logitech Z213',
-    owner: 'Нурлан Т.',
-    type: 'Аудио',
-    status: 'missing',
-  },
-]
+function getUserLabel(user: CurrentUser | null) {
+  if (!user) {
+    return 'Ответственный не указан'
+  }
+  if (user.full_name) {
+    return user.full_name
+  }
+  const parts = [user.first_name, user.last_name].filter(Boolean)
+  if (parts.length > 0) {
+    return parts.join(' ')
+  }
+  return user.email
+}
 
 export function RoomDetailPage() {
-  const [filter, setFilter] = useState<ItemStatus>('found')
   const [finishOpen, setFinishOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<(typeof roomItems)[number] | null>(null)
-  const [page, setPage] = useState(1)
-  const pageSize = 5
+  const [selectedItem, setSelectedItem] = useState<RoomItem | null>(null)
+  const [room, setRoom] = useState<Cabinet | null>(null)
+  const [items, setItems] = useState<InventoryItem[]>([])
+  const [types, setTypes] = useState<InventoryType[]>([])
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [lang, setLang] = useState<Lang>(() => {
     const stored = localStorage.getItem('dashboard_lang')
     if (stored === 'id' || stored === 'ru' || stored === 'en' || stored === 'kk') {
@@ -78,12 +51,69 @@ export function RoomDetailPage() {
     return 'id'
   })
   const [reportsOpen, setReportsOpen] = useState(false)
+  const params = useParams()
+  const roomId = Number(params.roomId ?? params.id)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
   const handleLogout = () => {
     clearTokens()
     navigate('/')
   }
+
+  useEffect(() => {
+    if (!Number.isFinite(roomId)) {
+      setError('Некорректный кабинет')
+      setIsLoading(false)
+      return
+    }
+    let active = true
+    setIsLoading(true)
+    setError(null)
+    Promise.all([
+      getMyCabinet(roomId),
+      listInventoryItemsByRoom(roomId),
+      listInventoryTypes(),
+      getCurrentUser(),
+    ])
+      .then(([roomData, itemsData, typesData, userData]) => {
+        if (!active) {
+          return
+        }
+        setRoom(roomData)
+        setItems(itemsData)
+        setTypes(typesData)
+        setCurrentUser(userData)
+      })
+      .catch((err) => {
+        if (!active) {
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Не удалось загрузить кабинет')
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [roomId])
+
+  const roomItems = useMemo(() => {
+    const typeMap = new Map(types.map((type) => [type.id, type.name]))
+    return items.map((item) => ({
+      id: item.id,
+      name: item.title,
+      type:
+        item.category ||
+        (item.inventory_type_id ? typeMap.get(item.inventory_type_id) : undefined) ||
+        '—',
+      status: item.status ?? null,
+      item,
+    }))
+  }, [items, types])
 
   return (
     <div className="dashboard">
@@ -105,96 +135,51 @@ export function RoomDetailPage() {
         <div className="room">
           <div className="room__header">
             <div>
-              <h1>Кабинет 203</h1>
-              <p>Тип кабинета: Компьютерный класс</p>
+              <h1>{room?.name ?? 'Кабинет'}</h1>
+              <p>Тип кабинета: {room?.room_type ?? '—'}</p>
             </div>
             <button className="room__finish" type="button" onClick={() => setFinishOpen(true)}>
               Завершить аудиторию
             </button>
           </div>
 
-          <div className="room__filters">
-            <button
-              type="button"
-              className={filter === 'found' ? 'is-active' : undefined}
-              onClick={() => {
-                setFilter('found')
-                setPage(1)
-              }}
-            >
-              Найдено
-            </button>
-            <button
-              type="button"
-              className={filter === 'missing' ? 'is-active' : undefined}
-              onClick={() => {
-                setFilter('missing')
-                setPage(1)
-              }}
-            >
-              Не найдено
-            </button>
-            <button
-              type="button"
-              className={filter === 'misplaced' ? 'is-active' : undefined}
-              onClick={() => {
-                setFilter('misplaced')
-                setPage(1)
-              }}
-            >
-              Не на своем месте
-            </button>
-          </div>
-
-          <div className="room__table">
+          <div className="room__table is-four">
             <div className="room__table-head">
               <span>Наименование</span>
               <span>Отв. сотрудник</span>
               <span>Тип оборудования</span>
               <span>Статус</span>
-              <span />
             </div>
             <div className="room__table-body">
-              {roomItems
-                .filter((item) => item.status === filter)
-                .slice((page - 1) * pageSize, page * pageSize)
-                .map((item) => (
-                  <div className="room__table-row" key={item.name}>
+              {isLoading && (
+                <div className="room__table-row is-message">Загрузка...</div>
+              )}
+              {!isLoading && error && (
+                <div className="room__table-row is-message">{error}</div>
+              )}
+              {!isLoading &&
+                !error &&
+                roomItems.map((item) => (
+                  <div
+                    className="room__table-row is-clickable"
+                    key={item.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedItem(item)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedItem(item)
+                      }
+                    }}
+                  >
                     <span>{item.name}</span>
-                    <span>{item.owner}</span>
+                    <span>{getUserLabel(currentUser)}</span>
                     <span>{item.type}</span>
-                    <span className={`room__status is-${item.status}`}>
-                      {item.status === 'found'
-                        ? 'Найдено'
-                        : item.status === 'missing'
-                          ? 'Не найдено'
-                          : 'Не на месте'}
-                    </span>
-                    <button type="button" onClick={() => setSelectedItem(item)}>
-                      Детали
-                    </button>
+                    <span className="room__status">{item.status ?? 'Статус не задан'}</span>
                   </div>
                 ))}
             </div>
-          </div>
-          <div className="room__pagination">
-            <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
-              Назад
-            </button>
-            <span>Страница {page}</span>
-            <button
-              type="button"
-              onClick={() =>
-                setPage((prev) =>
-                  Math.min(
-                    Math.ceil(roomItems.filter((item) => item.status === filter).length / pageSize),
-                    prev + 1
-                  )
-                )
-              }
-            >
-              Вперёд
-            </button>
           </div>
         </div>
       </main>
@@ -203,7 +188,7 @@ export function RoomDetailPage() {
         <div className="inventory__modal-backdrop" role="presentation">
           <div className="inventory__modal" role="dialog" aria-modal="true">
             <h2>Завершить аудиторию</h2>
-            <p>Вы уверены, что хотите завершить аудит кабинета 203?</p>
+            <p>Вы уверены, что хотите завершить аудит кабинета {room?.name ?? ''}?</p>
             <div className="inventory__actions">
               <button type="button" onClick={() => setFinishOpen(false)}>
                 Отмена
@@ -220,7 +205,19 @@ export function RoomDetailPage() {
         <div className="inventory__modal-backdrop" role="presentation">
           <div className="room__modal" role="dialog" aria-modal="true">
             <div className="room__modal-media">
-              <div className="room__modal-image" />
+              <div
+                className="room__modal-image"
+                style={
+                  selectedItem.item.image
+                    ? {
+                        backgroundImage: `url(${selectedItem.item.image})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                      }
+                    : undefined
+                }
+              />
             </div>
             <div className="room__modal-content">
               <div className="room__modal-header">
@@ -241,21 +238,15 @@ export function RoomDetailPage() {
                 </div>
                 <div>
                   <span>Ответственный</span>
-                  <strong>{selectedItem.owner}</strong>
+                  <strong>{getUserLabel(currentUser)}</strong>
                 </div>
                 <div>
                   <span>Статус</span>
-                  <strong>
-                    {selectedItem.status === 'found'
-                      ? 'Найдено'
-                      : selectedItem.status === 'missing'
-                        ? 'Не найдено'
-                        : 'Не на месте'}
-                  </strong>
+                  <strong>{selectedItem.status ?? 'Статус не задан'}</strong>
                 </div>
                 <div>
                   <span>Местоположение</span>
-                  <strong>Кабинет 203</strong>
+                  <strong>{room?.name ?? '—'}</strong>
                 </div>
               </div>
               <p className="room__modal-note">

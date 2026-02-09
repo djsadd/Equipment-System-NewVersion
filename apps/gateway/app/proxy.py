@@ -48,7 +48,10 @@ async def forward_request(
     upstream: str,
     upstream_path: str,
 ) -> Response:
-    url = upstream.rstrip("/") + "/" + upstream_path.lstrip("/")
+    if upstream_path:
+        url = upstream.rstrip("/") + "/" + upstream_path.lstrip("/")
+    else:
+        url = upstream.rstrip("/")
     if request.url.query:
         url = f"{url}?{request.url.query}"
 

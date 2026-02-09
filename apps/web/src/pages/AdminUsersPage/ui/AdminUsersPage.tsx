@@ -18,6 +18,7 @@ import {
   updateAdminRole,
   updateAdminUser,
 } from '@/shared/api/admin'
+import { listDepartments, type Department } from '@/shared/api/departments'
 
 type AdminTab = 'users' | 'roles' | 'permissions'
 type ModalState =
@@ -43,6 +44,17 @@ function getUserDisplayName(user: AdminUser) {
   return user.email
 }
 
+function getDepartmentLabel(
+  user: AdminUser,
+  departmentsById: Map<number, Department>
+): string {
+  if (!user.department_id) {
+    return '—'
+  }
+  const department = departmentsById.get(user.department_id)
+  return department ? department.name : `Отдел #${user.department_id}`
+}
+
 export function AdminUsersPage() {
   const [lang, setLang] = useState<Lang>(() => {
     const stored = localStorage.getItem('dashboard_lang')
@@ -60,6 +72,9 @@ export function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [departmentsLoading, setDepartmentsLoading] = useState(true)
+  const [departmentsError, setDepartmentsError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
@@ -102,6 +117,37 @@ export function AdminUsersPage() {
     return loadData()
   }, [])
 
+  useEffect(() => {
+    let active = true
+    setDepartmentsLoading(true)
+    setDepartmentsError(null)
+    listDepartments()
+      .then((data) => {
+        if (!active) {
+          return
+        }
+        if (!Array.isArray(data)) {
+          throw new Error('Некорректный ответ сервиса департаментов')
+        }
+        setDepartments(data)
+      })
+      .catch((err) => {
+        if (!active) {
+          return
+        }
+        setDepartmentsError(err instanceof Error ? err.message : 'Не удалось загрузить департаменты')
+      })
+      .finally(() => {
+        if (active) {
+          setDepartmentsLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const totalUsers = users.length
   const totalRoles = roles.length
   const totalPermissions = permissions.length
@@ -118,6 +164,10 @@ export function AdminUsersPage() {
     })
     return counts
   }, [users])
+
+  const departmentsById = useMemo(() => {
+    return new Map(departments.map((item) => [item.id, item]))
+  }, [departments])
 
   const openUserCreate = () => {
     setActionError(null)
@@ -417,7 +467,7 @@ export function AdminUsersPage() {
                   <span>Разрешения</span>
                   <strong>{modal.item.permissions.join(', ') || '—'}</strong>
                   <span>Отдел</span>
-                  <strong>{modal.item.department_id ?? '—'}</strong>
+                  <strong>{getDepartmentLabel(modal.item, departmentsById)}</strong>
                   <span>Создан</span>
                   <strong>{modal.item.created_at ?? '—'}</strong>
                 </div>
@@ -446,6 +496,9 @@ export function AdminUsersPage() {
             {modal.type === 'user-create' && (
               <UserForm
                 roles={roles}
+                departments={departments}
+                departmentsLoading={departmentsLoading}
+                departmentsError={departmentsError}
                 onCancel={() => setModal(null)}
                 onSubmit={async (payload) => {
                   if (!payload.email || !payload.password) {
@@ -489,6 +542,9 @@ export function AdminUsersPage() {
               <UserForm
                 roles={roles}
                 initial={modal.item}
+                departments={departments}
+                departmentsLoading={departmentsLoading}
+                departmentsError={departmentsError}
                 onCancel={() => setModal(null)}
                 onSubmit={async (payload) => {
                   setActionBusy(true)
@@ -588,6 +644,9 @@ type UserFormProps = {
   roles: AdminRole[]
   initial?: AdminUser
   mode?: 'create' | 'edit'
+  departments?: Department[]
+  departmentsLoading?: boolean
+  departmentsError?: string | null
   onSubmit: (payload: {
     email?: string | null
     password?: string | null
@@ -604,7 +663,18 @@ type UserFormProps = {
   error?: string | null
 }
 
-function UserForm({ roles, initial, mode = 'create', onSubmit, onCancel, busy, error }: UserFormProps) {
+function UserForm({
+  roles,
+  initial,
+  mode = 'create',
+  departments,
+  departmentsLoading,
+  departmentsError,
+  onSubmit,
+  onCancel,
+  busy,
+  error,
+}: UserFormProps) {
   const [email, setEmail] = useState(initial?.email ?? '')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState(initial?.full_name ?? '')
@@ -613,6 +683,8 @@ function UserForm({ roles, initial, mode = 'create', onSubmit, onCancel, busy, e
   const [departmentId, setDepartmentId] = useState(
     initial?.department_id ? String(initial.department_id) : ''
   )
+  const [departmentSearch, setDepartmentSearch] = useState('')
+  const [showDepartmentList, setShowDepartmentList] = useState(false)
   const [role, setRole] = useState(initial?.role ?? '')
   const [isActive, setIsActive] = useState(initial?.is_active ?? true)
   const [roleIds, setRoleIds] = useState<number[]>(() => {
@@ -627,6 +699,28 @@ function UserForm({ roles, initial, mode = 'create', onSubmit, onCancel, busy, e
       prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
     )
   }
+
+  const departmentsById = useMemo(() => {
+    return new Map((departments ?? []).map((item) => [item.id, item]))
+  }, [departments])
+
+  const filteredDepartments = useMemo(() => {
+    const list = departments ?? []
+    const query = departmentSearch.trim().toLowerCase()
+    const filtered = query
+      ? list.filter((item) => item.name.toLowerCase().includes(query))
+      : list
+    return filtered.slice(0, 8)
+  }, [departments, departmentSearch])
+
+  useEffect(() => {
+    if (!departmentSearch && departmentId && departmentsById.size > 0) {
+      const resolved = departmentsById.get(Number(departmentId))
+      if (resolved) {
+        setDepartmentSearch(resolved.name)
+      }
+    }
+  }, [departmentId, departmentSearch, departmentsById])
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -681,11 +775,51 @@ function UserForm({ roles, initial, mode = 'create', onSubmit, onCancel, busy, e
       </label>
       <label>
         Отдел
-        <input
-          value={departmentId}
-          onChange={(event) => setDepartmentId(event.target.value)}
-          inputMode="numeric"
-        />
+        <div className="inventory-user-picker">
+          <input
+            value={departmentSearch}
+            onChange={(event) => {
+              setDepartmentSearch(event.target.value)
+              setDepartmentId('')
+              setShowDepartmentList(true)
+            }}
+            onFocus={() => setShowDepartmentList(true)}
+            onBlur={() => {
+              window.setTimeout(() => setShowDepartmentList(false), 120)
+            }}
+            placeholder="Начните вводить название отдела"
+          />
+          {departmentsLoading ? (
+            <span className="inventory-user-picker__hint">Загрузка отделов...</span>
+          ) : null}
+          {departmentsError ? (
+            <span className="inventory-user-picker__error">{departmentsError}</span>
+          ) : null}
+          {departmentId && departmentsById.get(Number(departmentId)) ? (
+            <span className="inventory-user-picker__value">
+              Выбран: {departmentsById.get(Number(departmentId))?.name}
+            </span>
+          ) : null}
+          {showDepartmentList && filteredDepartments.length > 0 ? (
+            <div className="inventory-user-picker__list">
+              {filteredDepartments.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="inventory-user-picker__option"
+                  onMouseDown={() => {
+                    setDepartmentId(String(item.id))
+                    setDepartmentSearch(item.name)
+                    setShowDepartmentList(false)
+                  }}
+                >
+                  <span className="inventory-user-picker__name">{item.name}</span>
+                  <span className="inventory-user-picker__meta">ID: {item.id}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </label>
       <label>
         Должность

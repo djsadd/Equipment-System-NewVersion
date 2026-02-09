@@ -21,7 +21,23 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
         },
-        '/inventory': {
+        '^/inventory/items': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '^/inventory/types': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '^/cabinets/rooms': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '^/cabinets/room-types': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '^/departments': {
           target: apiTarget,
           changeOrigin: true,
         },

@@ -10,11 +10,11 @@ export function RequireAdmin({ children }: RequireAdminProps) {
   const location = useLocation()
 
   if (!hasValidAccessToken()) {
-    return <Navigate to="/" replace state={{ from: location.pathname }} />
+    return <Navigate to="/401" replace state={{ from: location.pathname }} />
   }
 
   if (!hasSystemAdminRole()) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/403" replace />
   }
 
   return children
