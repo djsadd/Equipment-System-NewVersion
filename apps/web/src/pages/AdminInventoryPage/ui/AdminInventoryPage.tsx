@@ -252,8 +252,8 @@ export function AdminInventoryPage() {
       />
 
       <main className="dashboard__main">
-        <section className="admin">
-          <header className="admin__header">
+        <section className="admin admin--inventory">
+          <header className="admin__header admin__header--with-tabs">
             <div>
               <nav className="breadcrumb">
                 <span>Администрирование / Инвентарь</span>
@@ -261,7 +261,8 @@ export function AdminInventoryPage() {
               <h1>Инвентарь</h1>
               <p>CRUD инвентаря и типов инвентаря.</p>
             </div>
-            <div className="admin__actions">
+            <div className="admin__header-side">
+              <div className="admin__actions">
               <button type="button" onClick={() => navigate('/dashboard')}>
                 Вернуться в кабинет
               </button>
@@ -275,10 +276,8 @@ export function AdminInventoryPage() {
                   Создать тип
                 </button>
               )}
-            </div>
-          </header>
-
-          <section className="admin__tabs">
+              </div>
+              <section className="admin__tabs" aria-label="Inventory filters">
             <button
               type="button"
               className={activeTab === 'items' ? 'is-active' : undefined}
@@ -293,7 +292,9 @@ export function AdminInventoryPage() {
             >
               Типы инвентаря
             </button>
-          </section>
+              </section>
+            </div>
+          </header>
 
           <section className="admin__grid" key={activeTab}>
             {activeTab === 'items' && (

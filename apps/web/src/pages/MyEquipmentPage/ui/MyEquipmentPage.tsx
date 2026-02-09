@@ -144,24 +144,6 @@ export function MyEquipmentPage() {
   }, [])
 
   const rows = useMemo(() => buildRows(items, types, locations), [items, types, locations])
-  const stats = useMemo(() => {
-    const counts = {
-      total: rows.length,
-      active: 0,
-      service: 0,
-      reserve: 0,
-    }
-    rows.forEach((row) => {
-      if (row.statusKey === 'active') {
-        counts.active += 1
-      } else if (row.statusKey === 'service') {
-        counts.service += 1
-      } else if (row.statusKey === 'reserve') {
-        counts.reserve += 1
-      }
-    })
-    return counts
-  }, [rows])
 
   return (
     <div className="dashboard">
@@ -180,7 +162,7 @@ export function MyEquipmentPage() {
         onLogout={handleLogout}
       />
 
-      <main className="dashboard__main">
+      <main className="dashboard__main dashboard__main--my-equipment">
         <section className="my-equipment">
           <header className="my-equipment__header">
             <div>
@@ -196,25 +178,6 @@ export function MyEquipmentPage() {
               </button>
             </div>
           </header>
-
-          <section className="my-equipment__report">
-            <div>
-              <div className="my-equipment__value">{stats.total}</div>
-              <div className="my-equipment__label">Всего единиц</div>
-            </div>
-            <div>
-              <div className="my-equipment__value">{stats.active}</div>
-              <div className="my-equipment__label">В работе</div>
-            </div>
-            <div>
-              <div className="my-equipment__value">{stats.service}</div>
-              <div className="my-equipment__label">На сервисе</div>
-            </div>
-            <div>
-              <div className="my-equipment__value">{stats.reserve}</div>
-              <div className="my-equipment__label">В резерве</div>
-            </div>
-          </section>
 
           <div className="room__table">
             <div className="room__table-head">

@@ -237,7 +237,7 @@ export function AdminCabinetsPage() {
         onLogout={handleLogout}
       />
 
-      <main className="dashboard__main">
+      <main className="dashboard__main dashboard__main--compact">
         <section className="cabinet-admin">
           <header className="cabinet-admin__header">
             <div>
@@ -296,7 +296,7 @@ export function AdminCabinetsPage() {
 
           <section className="cabinet-admin__grid" key={`${activeTab}-grid`}>
             {activeTab === 'cabinets' && (
-              <div className="cabinet-admin__table">
+              <div className="cabinet-admin__table cabinet-admin__table--cabinets">
                 <div className="cabinet-admin__table-head">
                   <span>Кабинет</span>
                   <span>Тип кабинета</span>
@@ -361,7 +361,7 @@ export function AdminCabinetsPage() {
               <article className="cabinet-admin__card">
                 <h2>Типы кабинетов</h2>
                 <p>Настройка типов: учебный, лаборатория, административный.</p>
-                <div className="cabinet-admin__table">
+                <div className="cabinet-admin__table cabinet-admin__table--types">
                   <div className="cabinet-admin__table-head">
                     <span>Тип</span>
                     <span>Кол-во</span>
