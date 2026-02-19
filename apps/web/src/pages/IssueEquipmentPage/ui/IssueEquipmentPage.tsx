@@ -27,7 +27,6 @@ export function IssueEquipmentPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<(typeof issueItems)[number] | null>(null)
   const [requestOpen, setRequestOpen] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
@@ -47,8 +46,6 @@ export function IssueEquipmentPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="inventory"
         onNavigate={navigate}

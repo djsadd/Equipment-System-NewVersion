@@ -12,6 +12,7 @@ from app.schemas.user import (
     AdminUserCreate,
     AdminUserUpdate,
     UserCreate,
+    UserLookupPublic,
     UserPublic,
     UserRolesUpdate,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "AdminUserCreate",
     "AdminUserUpdate",
     "UserCreate",
+    "UserLookupPublic",
     "UserPublic",
     "UserRolesUpdate",
 ]

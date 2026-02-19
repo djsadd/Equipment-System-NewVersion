@@ -26,7 +26,6 @@ export function ReturnEquipmentPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<(typeof returnItems)[number] | null>(
     null
   )
@@ -48,8 +47,6 @@ export function ReturnEquipmentPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="inventory"
         onNavigate={navigate}

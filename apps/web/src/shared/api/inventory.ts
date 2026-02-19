@@ -1,9 +1,18 @@
-import { loadTokens } from '@/shared/lib/authStorage'
+import { fetchWithAuthRetry } from '@/shared/lib/authFetch'
 
 export type InventoryType = {
   id: number
   name: string
   description?: string | null
+  created_at?: string | null
+}
+
+export type Barcode = {
+  id: number
+  value?: string | null
+  title?: string | null
+  image_filename?: string | null
+  zpl_barcode?: string | null
   created_at?: string | null
 }
 
@@ -13,6 +22,7 @@ export type InventoryItem = {
   description?: string | null
   image?: string | null
   barcode_id?: number | null
+  barcodes?: Barcode[]
   location_id?: number | null
   responsible_id?: number | null
   status?: string | null
@@ -24,19 +34,16 @@ export type InventoryItem = {
   updated_at?: string | null
 }
 
+export type InventoryBulkMoveResult = {
+  moved_count: number
+  moved_item_ids: number[]
+  not_found_item_ids: number[]
+}
+
 const INVENTORY_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
 async function requestInventory<T>(path: string, init?: RequestInit) {
-  const token = loadTokens()?.accessToken
-
-  const response = await fetch(`${INVENTORY_BASE}/inventory${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers ?? {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      Accept: 'application/json',
-    },
-  })
+  const response = await fetchWithAuthRetry(`${INVENTORY_BASE}/inventory${path}`, init, 'optional')
 
   if (!response.ok) {
     let detail = 'Ошибка запроса'
@@ -44,6 +51,8 @@ async function requestInventory<T>(path: string, init?: RequestInit) {
       const data = await response.json()
       if (data && typeof data.detail === 'string') {
         detail = data.detail
+      } else if (data && Array.isArray((data as { detail?: unknown }).detail)) {
+        detail = formatFastApiValidationError((data as { detail: unknown[] }).detail)
       }
     } catch {
       // ignore parse errors
@@ -52,6 +61,21 @@ async function requestInventory<T>(path: string, init?: RequestInit) {
   }
 
   return (await response.json()) as T
+}
+
+function formatFastApiValidationError(detail: unknown[]) {
+  const parts: string[] = []
+  for (const item of detail) {
+    if (!item || typeof item !== 'object') {
+      continue
+    }
+    const typed = item as { loc?: unknown; msg?: unknown }
+    const loc = Array.isArray(typed.loc) ? typed.loc : []
+    const field = loc.filter((x) => typeof x === 'string').slice(1).join('.')
+    const msg = typeof typed.msg === 'string' ? typed.msg : 'Validation error'
+    parts.push(field ? `${field}: ${msg}` : msg)
+  }
+  return parts.length > 0 ? parts.join('; ') : 'Validation error'
 }
 
 export function listInventoryTypes() {
@@ -93,6 +117,10 @@ export function listMyInventoryItems() {
 
 export function listInventoryItemsByRoom(roomId: number) {
   return requestInventory<InventoryItem[]>(`/items/room/${roomId}`)
+}
+
+export function getInventoryItem(itemId: number) {
+  return requestInventory<InventoryItem>(`/items/${itemId}`)
 }
 
 export function createInventoryItem(payload: {
@@ -138,8 +166,32 @@ export function updateInventoryItem(
   })
 }
 
+export function bulkMoveInventoryItems(payload: {
+  item_ids: number[]
+  location_id: number
+  responsible_id?: number | null
+}) {
+  return requestInventory<InventoryBulkMoveResult>('/items/bulk-move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
 export function deleteInventoryItem(itemId: number) {
   return requestInventory<{ status: string }>(`/items/${itemId}`, {
     method: 'DELETE',
+  })
+}
+
+export function getBarcode(barcodeId: number) {
+  return requestInventory<Barcode>(`/barcodes/${barcodeId}`)
+}
+
+export function scanMyInventoryItem(payload: { barcode_value: string }) {
+  return requestInventory<InventoryItem>('/items/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   })
 }

@@ -55,7 +55,6 @@ export function AdminCabinetsPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<CabinetAdminTab>('cabinets')
   const [cabinets, setCabinets] = useState<Cabinet[]>([])
   const [cabinetTypes, setCabinetTypes] = useState<CabinetType[]>([])
@@ -229,8 +228,6 @@ export function AdminCabinetsPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="admin"
         onNavigate={navigate}

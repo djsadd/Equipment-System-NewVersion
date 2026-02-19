@@ -21,7 +21,6 @@ export function AdminDepartmentDetailPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [department, setDepartment] = useState<Department | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -113,8 +112,6 @@ export function AdminDepartmentDetailPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="admin"
         onNavigate={navigate}

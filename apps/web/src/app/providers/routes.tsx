@@ -9,6 +9,7 @@ import { IssueEquipmentPage } from '@/pages/IssueEquipmentPage/ui/IssueEquipment
 import { ReturnEquipmentPage } from '@/pages/ReturnEquipmentPage/ui/ReturnEquipmentPage'
 import { NotificationsPage } from '@/pages/NotificationsPage/ui/NotificationsPage'
 import { CabinetsPage } from '@/pages/CabinetsPage/ui/CabinetsPage'
+import { CabinetDetailPage } from '@/pages/CabinetDetailPage/ui/CabinetDetailPage'
 import { ReportsPage } from '@/pages/ReportsPage/ui/ReportsPage'
 import { MaintenancePage } from '@/pages/MaintenancePage/ui/MaintenancePage'
 import { InventoryReportsPage } from '@/pages/InventoryReportsPage/ui/InventoryReportsPage'
@@ -20,6 +21,8 @@ import { AdminDepartmentCreatePage } from '@/pages/AdminDepartmentCreatePage/ui/
 import { AdminDepartmentDetailPage } from '@/pages/AdminDepartmentDetailPage/ui/AdminDepartmentDetailPage'
 import { AdminInventoryPage } from '@/pages/AdminInventoryPage/ui/AdminInventoryPage'
 import { AdminInventoryCreatePage } from '@/pages/AdminInventoryCreatePage/ui/AdminInventoryCreatePage'
+import { AdminJournalPage } from '@/pages/AdminJournalPage/ui/AdminJournalPage'
+import { AdminJournalDetailPage } from '@/pages/AdminJournalDetailPage/ui/AdminJournalDetailPage'
 import { ErrorPage } from '@/pages/ErrorPage/ui/ErrorPage'
 import { RequireAdmin } from '@/app/providers/RequireAdmin'
 import { RequireAuth } from '@/app/providers/RequireAuth'
@@ -104,7 +107,7 @@ export function AppRoutes() {
         path="/cabinets/room/:id"
         element={
           <RequireAuth>
-            <RoomDetailPage />
+            <CabinetDetailPage />
           </RequireAuth>
         }
       />
@@ -165,27 +168,43 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/admin/journal"
+        element={
+          <RequireAdmin>
+            <AdminJournalPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/journal/:id"
+        element={
+          <RequireAdmin>
+            <AdminJournalDetailPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
         path="/reports/inventory"
         element={
-          <RequireAuth>
+          <RequireAdmin>
             <InventoryReportsPage />
-          </RequireAuth>
+          </RequireAdmin>
         }
       />
       <Route
         path="/reports/inventory/:id"
         element={
-          <RequireAuth>
+          <RequireAdmin>
             <InventoryReportDetailPage />
-          </RequireAuth>
+          </RequireAdmin>
         }
       />
       <Route
         path="/reports/:module"
         element={
-          <RequireAuth>
+          <RequireAdmin>
             <ReportsPage />
-          </RequireAuth>
+          </RequireAdmin>
         }
       />
       <Route

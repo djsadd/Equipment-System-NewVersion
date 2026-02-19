@@ -51,7 +51,6 @@ export function InventoryReportsPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(true)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
   const handleLogout = () => {
@@ -68,11 +67,8 @@ export function InventoryReportsPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="reports"
-        activeReport="inventory"
         onNavigate={navigate}
         onLogout={handleLogout}
       />
@@ -88,6 +84,30 @@ export function InventoryReportsPage() {
               Создать инвентаризацию
             </button>
           </div>
+
+          <section className="admin__tabs" aria-label="Report modules">
+            {t.reports.items.map((label, index) => {
+              const routes = ['audit', 'computers', 'equipment', 'cartridges', 'inventory', 'uploads'] as const
+              const route = routes[index] ?? 'audit'
+              const isActive = route === 'inventory'
+              return (
+                <button
+                  key={route}
+                  type="button"
+                  className={isActive ? 'is-active' : undefined}
+                  onClick={() => {
+                    if (route === 'inventory') {
+                      navigate('/reports/inventory')
+                      return
+                    }
+                    navigate(`/reports/${route}`)
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </section>
 
           <section className="inventory-reports__table">
             <div className="inventory-reports__table-card">

@@ -1,4 +1,4 @@
-import { loadTokens } from '@/shared/lib/authStorage'
+import { fetchWithAuthRetry } from '@/shared/lib/authFetch'
 
 export type Department = {
   id: number
@@ -12,19 +12,7 @@ export type Department = {
 const DEPARTMENTS_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
 async function requestDepartments<T>(path: string, init?: RequestInit) {
-  const token = loadTokens()?.accessToken
-  if (!token) {
-    throw new Error('access_token_missing')
-  }
-
-  const response = await fetch(`${DEPARTMENTS_BASE}/departments${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-    },
-  })
+  const response = await fetchWithAuthRetry(`${DEPARTMENTS_BASE}/departments${path}`, init, 'required')
 
   if (!response.ok) {
     let detail = 'Ошибка запроса'

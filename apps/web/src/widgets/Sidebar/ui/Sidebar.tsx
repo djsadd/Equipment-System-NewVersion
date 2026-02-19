@@ -4,12 +4,9 @@ import { hasSystemAdminRole } from '@/shared/lib/authStorage'
 type SidebarProps = {
   lang: Lang
   onLangChange: (lang: Lang) => void
-  reportsOpen: boolean
-  onToggleReports: () => void
   copy: {
     nav: string[]
     equipment: { title: string; items: string[] }
-    reports: { title: string; items: string[] }
     cabinets: string
     admin: string
   }
@@ -22,19 +19,9 @@ type SidebarProps = {
     | 'notifications'
     | 'cabinets'
     | 'reports'
-  activeReport?: string
   onNavigate: (path: string) => void
   onLogout: () => void
 }
-
-const reportRoutes = [
-  'printers',
-  'computers',
-  'equipment',
-  'cartridges',
-  'inventory',
-  'uploads',
-]
 
 const navIcons = [
   <svg viewBox="0 0 24 24" aria-hidden key="dash">
@@ -89,15 +76,11 @@ const navIcons = [
 export function Sidebar({
   lang,
   onLangChange,
-  reportsOpen,
-  onToggleReports,
   copy,
   active,
-  activeReport,
   onNavigate,
   onLogout,
 }: SidebarProps) {
-  const shouldShowReports = reportsOpen || Boolean(activeReport)
   const isSystemAdmin = hasSystemAdminRole()
   return (
     <aside className="dashboard__aside">
@@ -130,33 +113,6 @@ export function Sidebar({
           <span className="dashboard__nav-icon">{navIcons[2]}</span>
           {copy.equipment.items[1]}
         </button>
-        <div className="dashboard__nav-group">
-          <button
-            type="button"
-            className={shouldShowReports ? 'is-open' : undefined}
-            onClick={onToggleReports}
-          >
-            <span className="dashboard__nav-icon">{navIcons[5]}</span>
-            {copy.reports.title}
-          </button>
-          {shouldShowReports ? (
-            <div className="dashboard__submenu">
-              {copy.reports.items.map((item, index) => {
-                const route = reportRoutes[index]
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    className={activeReport === route ? 'is-bold' : undefined}
-                    onClick={() => onNavigate(`/reports/${route}`)}
-                  >
-                  {item}
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
-        </div>
         <button
           type="button"
           className={active === 'maintenance' ? 'is-active' : undefined}
@@ -241,7 +197,36 @@ export function Sidebar({
           aria-label="Logout"
           onClick={onLogout}
         >
-          ⎋
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            aria-hidden
+            focusable="false"
+          >
+            <path
+              d="M10 17l-1 3h11V4H9l1 3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M4 12h11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M7 9l-3 3 3 3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
       </div>
     </aside>

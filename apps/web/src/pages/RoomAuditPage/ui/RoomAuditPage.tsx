@@ -75,7 +75,6 @@ export function RoomAuditPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
@@ -99,8 +98,6 @@ export function RoomAuditPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="cabinets"
         onNavigate={navigate}

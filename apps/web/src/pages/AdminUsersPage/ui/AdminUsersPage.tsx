@@ -63,7 +63,6 @@ export function AdminUsersPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<AdminTab>('users')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [roles, setRoles] = useState<AdminRole[]>([])
@@ -232,8 +231,6 @@ export function AdminUsersPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="admin"
         onNavigate={navigate}

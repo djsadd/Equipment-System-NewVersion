@@ -25,7 +25,6 @@ export function AdminInventoryTypesPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [types, setTypes] = useState<InventoryType[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -102,8 +101,6 @@ export function AdminInventoryTypesPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="admin"
         onNavigate={navigate}
@@ -121,9 +118,6 @@ export function AdminInventoryTypesPage() {
               <p>Создание и управление справочником типов оборудования.</p>
             </div>
             <div className="admin__actions">
-              <button type="button" onClick={() => navigate('/dashboard')}>
-                Вернуться в кабинет
-              </button>
               <button type="button" className="is-primary" onClick={openCreate}>
                 Создать тип
               </button>

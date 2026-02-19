@@ -1,4 +1,4 @@
-import { loadTokens } from '@/shared/lib/authStorage'
+import { fetchWithAuthRetry } from '@/shared/lib/authFetch'
 
 export type AdminUser = {
   id: number
@@ -30,19 +30,7 @@ export type AdminPermission = {
 const ADMIN_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
 async function requestAdmin<T>(path: string, init?: RequestInit) {
-  const token = loadTokens()?.accessToken
-  if (!token) {
-    throw new Error('access_token_missing')
-  }
-
-  const response = await fetch(`${ADMIN_BASE}/auth/admin${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-    },
-  })
+  const response = await fetchWithAuthRetry(`${ADMIN_BASE}/auth/admin${path}`, init, 'required')
 
   if (!response.ok) {
     let detail = 'Ошибка запроса'

@@ -19,6 +19,8 @@ DEFAULT_ROUTES: List[Route] = [
     Route(name="notifications", path="/notifications", upstream="http://notifications:8000"),
     Route(name="analytics", path="/analytics", upstream="http://analytics:8000"),
     Route(name="inventory", path="/inventory", upstream="http://inventory:8000"),
+    # Backward/Frontend compatibility: web app and inventory-audit-service docs use `/audit/*`.
+    Route(name="audit", path="/audit", upstream="http://inventory-audit:8000"),
     Route(name="inventory-audit", path="/inventory-audit", upstream="http://inventory-audit:8000"),
     Route(name="operations", path="/operations", upstream="http://operations:8000"),
     Route(name="documents", path="/documents", upstream="http://documents:8000"),

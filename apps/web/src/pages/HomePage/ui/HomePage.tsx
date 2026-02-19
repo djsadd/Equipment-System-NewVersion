@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loginUser, registerUser } from '@/shared/api/auth'
-import { hasValidAccessToken, saveTokens } from '@/shared/lib/authStorage'
+import { saveTokens } from '@/shared/lib/authStorage'
+import { ensureSession } from '@/shared/lib/authSession'
 
 type Lang = 'ru' | 'en' | 'kk'
 type Mode = 'login' | 'register'
@@ -60,9 +61,15 @@ export function HomePage() {
   const t = useMemo(() => translations[lang], [lang])
 
   useEffect(() => {
-    if (hasValidAccessToken()) {
-      navigate('/dashboard')
-    }
+    ensureSession()
+      .then((ok) => {
+        if (ok) {
+          navigate('/dashboard')
+        }
+      })
+      .catch(() => {
+        // ignore
+      })
   }, [navigate])
 
   return (

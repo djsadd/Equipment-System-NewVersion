@@ -4,10 +4,12 @@ import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
 import {
+  bulkMoveInventoryItems,
   createInventoryItem,
   createInventoryType,
   deleteInventoryItem,
   deleteInventoryType,
+  getBarcode,
   listInventoryItems,
   listInventoryTypes,
   type InventoryItem,
@@ -15,17 +17,20 @@ import {
   updateInventoryItem,
   updateInventoryType,
 } from '@/shared/api/inventory'
+import { printLabel } from '@/shared/api/print'
+import { getInventoryStatusLabel } from '@/shared/lib/inventoryStatus'
 import { listAdminUsers, type AdminUser } from '@/shared/api/admin'
 import { listCabinets, type Cabinet } from '@/shared/api/cabinets'
 import { InventoryItemForm, type InventoryItemFormPayload } from './InventoryItemForm'
 
-type AdminTab = 'items' | 'types'
+type AdminTab = 'items' | 'types' | 'move'
 
 type ModalState =
   | { type: 'item-view'; item: InventoryItem }
   | { type: 'item-edit'; item: InventoryItem }
   | { type: 'type-create' }
   | { type: 'type-edit'; item: InventoryType }
+  | { type: 'move-bulk' }
   | null
 
 export function AdminInventoryPage() {
@@ -36,7 +41,6 @@ export function AdminInventoryPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<AdminTab>('items')
   const [items, setItems] = useState<InventoryItem[]>([])
   const [types, setTypes] = useState<InventoryType[]>([])
@@ -50,9 +54,20 @@ export function AdminInventoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
+  const [printNotice, setPrintNotice] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
+  const [selectedMoveItemIds, setSelectedMoveItemIds] = useState<number[]>([])
+  const [moveSuccess, setMoveSuccess] = useState<string | null>(null)
+  const [bulkMoveLocationId, setBulkMoveLocationId] = useState('')
+  const [bulkMoveLocationSearch, setBulkMoveLocationSearch] = useState('')
+  const [showBulkMoveLocationList, setShowBulkMoveLocationList] = useState(false)
+  const [bulkMoveResponsibleId, setBulkMoveResponsibleId] = useState('')
+  const [bulkMoveResponsibleSearch, setBulkMoveResponsibleSearch] = useState('')
+  const [showBulkMoveResponsibleList, setShowBulkMoveResponsibleList] = useState(false)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
+  const printerHost =
+    (import.meta.env.VITE_PRINTER_HOST as string | undefined) ?? '192.168.112.169'
   const handleLogout = () => {
     clearTokens()
     navigate('/')
@@ -171,6 +186,125 @@ export function AdminInventoryPage() {
     return `${name} · ${user.email}`
   }
 
+  const getUserMeta = (user: AdminUser) => {
+    const parts = [user.email]
+    if (user.department_id) parts.push(`dep #${user.department_id}`)
+    if (user.role) parts.push(user.role)
+    return parts.filter(Boolean).join(' · ')
+  }
+
+  const getLocationLabel = (location: Cabinet) => location.name
+
+  const getLocationMeta = (location: Cabinet) => {
+    const parts = [location.room_type, location.status, `ID: ${location.id}`].filter(Boolean)
+    return parts.join(' · ')
+  }
+
+  const selectedMoveSet = useMemo(() => new Set(selectedMoveItemIds), [selectedMoveItemIds])
+  const selectedMoveItems = useMemo(
+    () => items.filter((item) => selectedMoveSet.has(item.id)),
+    [items, selectedMoveSet]
+  )
+
+  const allMoveItemIds = useMemo(() => items.map((item) => item.id), [items])
+  const isAllMoveSelected = allMoveItemIds.length > 0 && allMoveItemIds.every((id) => selectedMoveSet.has(id))
+
+  const toggleMoveItem = (itemId: number) => {
+    setSelectedMoveItemIds((prev) => (prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]))
+  }
+
+  const toggleAllMoveItems = () => {
+    setSelectedMoveItemIds((prev) => (prev.length === allMoveItemIds.length ? [] : allMoveItemIds))
+  }
+
+  const filteredBulkMoveLocations = useMemo(() => {
+    const query = bulkMoveLocationSearch.trim().toLowerCase()
+    const candidates = query
+      ? locations.filter((location) => {
+          const label = getLocationLabel(location).toLowerCase()
+          const meta = getLocationMeta(location).toLowerCase()
+          return label.includes(query) || meta.includes(query)
+        })
+      : locations
+    return candidates.slice(0, 8)
+  }, [locations, bulkMoveLocationSearch])
+
+  const filteredBulkMoveUsers = useMemo(() => {
+    const query = bulkMoveResponsibleSearch.trim().toLowerCase()
+    const candidates = query
+      ? users.filter((user) => {
+          const label = getUserLabel(user).toLowerCase()
+          const meta = getUserMeta(user).toLowerCase()
+          return label.includes(query) || meta.includes(query)
+        })
+      : users
+    return candidates.slice(0, 8)
+  }, [users, bulkMoveResponsibleSearch])
+
+  const resetBulkMoveForm = () => {
+    setBulkMoveLocationId('')
+    setBulkMoveLocationSearch('')
+    setShowBulkMoveLocationList(false)
+    setBulkMoveResponsibleId('')
+    setBulkMoveResponsibleSearch('')
+    setShowBulkMoveResponsibleList(false)
+  }
+
+  const openBulkMoveModal = () => {
+    if (selectedMoveItemIds.length === 0) {
+      setActionError('Выберите хотя бы одно оборудование')
+      return
+    }
+    setActionError(null)
+    setMoveSuccess(null)
+    resetBulkMoveForm()
+    setModal({ type: 'move-bulk' })
+  }
+
+  const handleBulkMove = async () => {
+    if (selectedMoveItemIds.length === 0) {
+      setActionError('Выберите хотя бы одно оборудование')
+      return
+    }
+    const locationId = Number(bulkMoveLocationId.trim())
+    if (!Number.isFinite(locationId) || locationId <= 0) {
+      setActionError('Выберите аудиторию')
+      return
+    }
+
+    const responsibleId = Number(bulkMoveResponsibleId.trim())
+    if (!Number.isFinite(responsibleId) || responsibleId <= 0) {
+      setActionError('Выберите ответственного')
+      return
+    }
+    const responsiblePatch = { responsible_id: responsibleId }
+
+    setActionBusy(true)
+    setActionError(null)
+    setMoveSuccess(null)
+    try {
+      const result = await bulkMoveInventoryItems({
+        item_ids: selectedMoveItemIds,
+        location_id: locationId,
+        ...responsiblePatch,
+      })
+
+      const updatedItems = await listInventoryItems()
+      setItems(updatedItems)
+
+      if (result.not_found_item_ids.length > 0) {
+        setActionError(`Часть позиций не найдена: ${result.not_found_item_ids[0]}`)
+      } else {
+        setMoveSuccess(`Перемещено: ${result.moved_count}`)
+      }
+
+      setSelectedMoveItemIds([])
+      setModal(null)
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
   const openTypeCreate = () => {
     setActionError(null)
     setModal({ type: 'type-create' })
@@ -243,8 +377,6 @@ export function AdminInventoryPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="admin"
         onNavigate={navigate}
@@ -262,37 +394,53 @@ export function AdminInventoryPage() {
               <p>CRUD инвентаря и типов инвентаря.</p>
             </div>
             <div className="admin__header-side">
-              <div className="admin__actions">
-              <button type="button" onClick={() => navigate('/dashboard')}>
-                Вернуться в кабинет
-              </button>
-              {activeTab === 'items' && (
-                <button type="button" className="is-primary" onClick={() => navigate('/admin/inventory/create')}>
-                  Добавить инвентарь
-                </button>
-              )}
-              {activeTab === 'types' && (
-                <button type="button" className="is-primary" onClick={openTypeCreate}>
-                  Создать тип
-                </button>
-              )}
-              </div>
               <section className="admin__tabs" aria-label="Inventory filters">
-            <button
-              type="button"
-              className={activeTab === 'items' ? 'is-active' : undefined}
-              onClick={() => setActiveTab('items')}
-            >
-              Инвентарь
-            </button>
-            <button
-              type="button"
-              className={activeTab === 'types' ? 'is-active' : undefined}
-              onClick={() => setActiveTab('types')}
-            >
-              Типы инвентаря
-            </button>
+                <button
+                  type="button"
+                  className={activeTab === 'items' ? 'is-active' : undefined}
+                  onClick={() => {
+                    setActionError(null)
+                    setMoveSuccess(null)
+                    setActiveTab('items')
+                  }}
+                >
+                  Инвентарь
+                </button>
+                <button
+                  type="button"
+                  className={activeTab === 'types' ? 'is-active' : undefined}
+                  onClick={() => {
+                    setActionError(null)
+                    setMoveSuccess(null)
+                    setActiveTab('types')
+                  }}
+                >
+                  Типы инвентаря
+                </button>
+                <button
+                  type="button"
+                  className={activeTab === 'move' ? 'is-active' : undefined}
+                  onClick={() => {
+                    setActionError(null)
+                    setMoveSuccess(null)
+                    setActiveTab('move')
+                  }}
+                >
+                  Перемещение оборудования
+                </button>
               </section>
+              <div className="admin__actions">
+                {activeTab === 'items' && (
+                  <button type="button" className="is-primary" onClick={() => navigate('/admin/inventory/create')}>
+                    Добавить инвентарь
+                  </button>
+                )}
+                {activeTab === 'types' && (
+                  <button type="button" className="is-primary" onClick={openTypeCreate}>
+                    Создать тип
+                  </button>
+                )}
+              </div>
             </div>
           </header>
 
@@ -316,11 +464,19 @@ export function AdminInventoryPage() {
                         <div className="admin__row-info">
                           <div className="admin__row-title">{item.title}</div>
                           <div className="admin__row-sub">
-                            {item.category || 'Без категории'} · {item.status || 'Статус не задан'}
+                            {item.category || 'Без категории'} ·{' '}
+                            {item.status ? getInventoryStatusLabel(item.status) : 'Статус не задан'}
                           </div>
                         </div>
                         <div className="admin__row-actions">
-                          <button type="button" onClick={() => setModal({ type: 'item-view', item })}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActionError(null)
+                              setPrintNotice(null)
+                              setModal({ type: 'item-view', item })
+                            }}
+                          >
                             Просмотр
                           </button>
                           <button type="button" onClick={() => setModal({ type: 'item-edit', item })}>
@@ -373,6 +529,115 @@ export function AdminInventoryPage() {
                 </div>
               </article>
             )}
+
+            {activeTab === 'move' && (
+              <article className="admin__card">
+                <div className="inventory-move__head">
+                  <div>
+                    <h2>Перемещение оборудования</h2>
+                    <span>Выберите оборудование и укажите аудиторию и ответственного.</span>
+                  </div>
+                  <div className="admin__actions">
+                    <button
+                      type="button"
+                      className="is-primary"
+                      disabled={selectedMoveItemIds.length === 0}
+                      onClick={openBulkMoveModal}
+                    >
+                      Переместить оборудование ({selectedMoveItemIds.length})
+                    </button>
+                  </div>
+                </div>
+
+                {locationsError ? <p className="admin__error">{locationsError}</p> : null}
+                {usersError ? <p className="admin__error">{usersError}</p> : null}
+                {actionError ? <p className="admin__error">{actionError}</p> : null}
+                {moveSuccess ? <p>{moveSuccess}</p> : null}
+
+                <div className="inventory__table-card inventory-move__table-card">
+                  <div className="inventory-move__table-head">
+                    <label className="inventory-move__check">
+                      <input type="checkbox" checked={isAllMoveSelected} onChange={toggleAllMoveItems} />
+                    </label>
+                    <span>Наименование</span>
+                    <span>Местоположение</span>
+                    <span>Статус</span>
+                    <span>Тип</span>
+                    <span>Ответственное лицо</span>
+                  </div>
+
+                  {isLoading && (
+                    <div className="inventory-move__table-row">
+                      <span />
+                      <span>Загрузка...</span>
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+
+                  {!isLoading && error && (
+                    <div className="inventory-move__table-row">
+                      <span />
+                      <span>{error}</span>
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+
+                  {!isLoading && !error && items.length === 0 && (
+                    <div className="inventory-move__table-row">
+                      <span />
+                      <span>Инвентарь не найден</span>
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+
+                  {!isLoading &&
+                    !error &&
+                    items.map((item) => {
+                      const location = item.location_id ? locationsById.get(item.location_id) ?? null : null
+                      const responsible = item.responsible_id ? usersById.get(item.responsible_id) ?? null : null
+                      const inventoryType = item.inventory_type_id ? typesById.get(item.inventory_type_id) ?? null : null
+                      const checked = selectedMoveSet.has(item.id)
+                      return (
+                        <div
+                          key={item.id}
+                          className="inventory-move__table-row"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => toggleMoveItem(item.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              toggleMoveItem(item.id)
+                            }
+                          }}
+                        >
+                          <label className="inventory-move__check" onClick={(event) => event.stopPropagation()}>
+                            <input type="checkbox" checked={checked} onChange={() => toggleMoveItem(item.id)} />
+                          </label>
+                          <span>{item.title}</span>
+                          <span>{location ? `${location.name} (ID ${location.id})` : '—'}</span>
+                          <span className="inventory__status">
+                            {getInventoryStatusLabel(item.status)}
+                          </span>
+                          <span>{inventoryType ? inventoryType.name : item.inventory_type_id ? `Тип #${item.inventory_type_id}` : '—'}</span>
+                          <span>
+                            {responsible ? getUserDisplayInfo(responsible) : item.responsible_id ? `ID ${item.responsible_id}` : '—'}
+                          </span>
+                        </div>
+                      )
+                    })}
+                </div>
+              </article>
+            )}
           </section>
         </section>
       </main>
@@ -411,7 +676,7 @@ export function AdminInventoryPage() {
                 <p>{modal.item.category || 'Без категории'}</p>
                 <div className="room__modal-grid">
                   <span>Статус</span>
-                  <strong>{modal.item.status || '—'}</strong>
+                  <strong>{getInventoryStatusLabel(modal.item.status)}</strong>
                   <span>Тип инвентаря</span>
                   <strong>
                     {modal.item.inventory_type_id
@@ -453,11 +718,209 @@ export function AdminInventoryPage() {
                 {usersError ? <p className="inventory-create__error">{usersError}</p> : null}
                 {locationsError ? <p className="inventory-create__error">{locationsError}</p> : null}
                 <div className="inventory__actions">
-                  <button type="button" onClick={() => setModal(null)}>
+                  {actionError ? <p className="admin__error">{actionError}</p> : null}
+                  {printNotice ? <p className="admin__success">{printNotice}</p> : null}
+                  <button
+                    type="button"
+                    className="is-primary"
+                    disabled={actionBusy}
+                    onClick={async () => {
+                      setActionBusy(true)
+                      setActionError(null)
+                      setPrintNotice(null)
+                      try {
+                        const candidates = modal.item.barcodes ?? []
+                        const primary =
+                          candidates.find((b) => b.id === modal.item.barcode_id) ??
+                          candidates[0] ??
+                          null
+
+                        const fallbackBarcodeId =
+                          (typeof modal.item.barcode_id === 'number' && modal.item.barcode_id > 0
+                            ? modal.item.barcode_id
+                            : null) ?? primary?.id ?? null
+
+                        if (!fallbackBarcodeId) {
+                          throw new Error('У оборудования не указан штрих-код')
+                        }
+
+                        const zpl =
+                          primary?.zpl_barcode ?? (await getBarcode(fallbackBarcodeId)).zpl_barcode
+
+                        if (!zpl) {
+                          throw new Error('ZPL для штрих-кода не найден')
+                        }
+
+                        await printLabel({
+                          zpl_data: zpl,
+                          printer_host: printerHost,
+                        })
+                        setPrintNotice('Отправлено на печать')
+                      } catch (err) {
+                        setActionError(
+                          err instanceof Error ? err.message : 'Не удалось отправить на печать'
+                        )
+                      } finally {
+                        setActionBusy(false)
+                      }
+                    }}
+                  >
+                    Распечатать штрих-код
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModal(null)
+                      setActionError(null)
+                      setPrintNotice(null)
+                    }}
+                  >
                     Закрыть
                   </button>
                 </div>
               </>
+            )}
+            {modal.type === 'move-bulk' && (
+              <form
+                className="admin__form"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleBulkMove()
+                }}
+              >
+                <h2>Перемещение оборудования</h2>
+                <p>Выбрано: {selectedMoveItemIds.length}</p>
+
+                {selectedMoveItems.length > 0 && (
+                  <div className="inventory-move__selected">
+                    <div className="inventory-move__selected-title">Список оборудования</div>
+                    <div className="inventory-move__selected-list">
+                      {selectedMoveItems.map((item) => (
+                        <div key={item.id} className="inventory-move__selected-item">
+                          <span className="inventory-move__selected-name">{item.title}</span>
+                          <span className="inventory-move__selected-meta">ID {item.id}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <label>
+                  Аудитория
+                  <div className="inventory-user-picker">
+                    <input
+                      value={bulkMoveLocationSearch}
+                      onChange={(event) => {
+                        setBulkMoveLocationSearch(event.target.value)
+                        setBulkMoveLocationId('')
+                      }}
+                      onFocus={() => setShowBulkMoveLocationList(true)}
+                      onBlur={() => {
+                        window.setTimeout(() => setShowBulkMoveLocationList(false), 120)
+                      }}
+                      placeholder="Номер или название аудитории"
+                    />
+                    {locationsLoading && (
+                      <div className="inventory-user-picker__hint">Загрузка кабинетов...</div>
+                    )}
+                    {!locationsLoading && locationsError && (
+                      <div className="inventory-user-picker__error">{locationsError}</div>
+                    )}
+                    {!locationsLoading &&
+                      !locationsError &&
+                      showBulkMoveLocationList &&
+                      filteredBulkMoveLocations.length > 0 && (
+                        <div className="inventory-user-picker__list">
+                          {filteredBulkMoveLocations.map((location) => (
+                            <button
+                              key={location.id}
+                              type="button"
+                              className="inventory-user-picker__option"
+                              onClick={() => {
+                                setBulkMoveLocationId(String(location.id))
+                                setBulkMoveLocationSearch(getLocationLabel(location))
+                                setShowBulkMoveLocationList(false)
+                              }}
+                            >
+                              <span className="inventory-user-picker__name">{getLocationLabel(location)}</span>
+                              <span className="inventory-user-picker__meta">{getLocationMeta(location)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    {bulkMoveLocationId && (
+                      <div className="inventory-user-picker__value">Выбрано: ID {bulkMoveLocationId}</div>
+                    )}
+                  </div>
+                </label>
+
+                <label>
+                  На кого переместить
+                  <div className="inventory-user-picker">
+                    <input
+                      value={bulkMoveResponsibleSearch}
+                      onChange={(event) => {
+                        setBulkMoveResponsibleSearch(event.target.value)
+                        setBulkMoveResponsibleId('')
+                      }}
+                      onFocus={() => setShowBulkMoveResponsibleList(true)}
+                      onBlur={() => {
+                        window.setTimeout(() => setShowBulkMoveResponsibleList(false), 120)
+                      }}
+                      placeholder="ФИО, почта или отдел"
+                    />
+                    {usersLoading && (
+                      <div className="inventory-user-picker__hint">Загрузка пользователей...</div>
+                    )}
+                    {!usersLoading && usersError && (
+                      <div className="inventory-user-picker__error">{usersError}</div>
+                    )}
+                    {!usersLoading &&
+                      !usersError &&
+                      showBulkMoveResponsibleList &&
+                      filteredBulkMoveUsers.length > 0 && (
+                        <div className="inventory-user-picker__list">
+                          {filteredBulkMoveUsers.map((user) => (
+                            <button
+                              key={user.id}
+                              type="button"
+                              className="inventory-user-picker__option"
+                              onClick={() => {
+                                setBulkMoveResponsibleId(String(user.id))
+                                setBulkMoveResponsibleSearch(getUserLabel(user))
+                                setShowBulkMoveResponsibleList(false)
+                              }}
+                            >
+                              <span className="inventory-user-picker__name">{getUserLabel(user)}</span>
+                              <span className="inventory-user-picker__meta">{getUserMeta(user)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    {bulkMoveResponsibleId && (
+                      <div className="inventory-user-picker__value">Выбрано: ID {bulkMoveResponsibleId}</div>
+                    )}
+                  </div>
+                </label>
+
+                {actionError ? <p className="admin__error">{actionError}</p> : null}
+
+                <div className="inventory__actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModal(null)
+                      setActionError(null)
+                    }}
+                    disabled={actionBusy}
+                  >
+                    Отмена
+                  </button>
+                  <button type="submit" className="is-primary" disabled={actionBusy}>
+                    Переместить
+                  </button>
+                </div>
+              </form>
             )}
             {modal.type === 'type-create' && (
               <InventoryTypeForm

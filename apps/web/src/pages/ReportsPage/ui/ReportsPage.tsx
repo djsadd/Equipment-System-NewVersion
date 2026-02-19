@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
+import { AuditReportModule } from '@/pages/ReportsPage/ui/AuditReportModule'
 
 const reportRoutes = [
-  'printers',
+  'audit',
   'computers',
   'equipment',
   'cartridges',
   'inventory',
   'uploads',
 ] as const
+
+const visibleReportRoutes: (typeof reportRoutes)[number][] = ['audit']
 
 const reportMeta: Record<
   (typeof reportRoutes)[number],
@@ -23,23 +26,12 @@ const reportMeta: Record<
     rows: string[][]
   }
 > = {
-  printers: {
-    title: 'Отчет по принтерам',
-    subtitle: 'Свод по принтерам, статусам и расходу картриджей.',
-    summary: [
-      { label: 'Всего принтеров', value: '128' },
-      { label: 'В работе', value: '112' },
-      { label: 'На ремонте', value: '9' },
-      { label: 'Списано', value: '7' },
-    ],
-    columns: ['Модель', 'Локация', 'Статус', 'Пробег, стр', 'Картридж'],
-    rows: [
-      ['HP LaserJet Pro M404', 'Каб. 201', 'В работе', '132 540', 'CF259A'],
-      ['Canon i-SENSYS LBP226', 'Каб. 114', 'В работе', '88 020', '056'],
-      ['Brother HL-L5200DW', 'Склад', 'На ремонте', '214 900', 'TN-3480'],
-      ['Xerox Phaser 6510', 'Каб. 305', 'В работе', '76 300', '106R03480'],
-      ['Kyocera ECOSYS P2040', 'Каб. 402', 'Списано', '310 120', 'TK-1160'],
-    ],
+  audit: {
+    title: 'Отчет по инвентаризации (аудиту)',
+    subtitle: 'Процент найденности, расхождения и детализация по кабинетам.',
+    summary: [],
+    columns: [],
+    rows: [],
   },
   computers: {
     title: 'Отчет по компьютерам',
@@ -141,7 +133,6 @@ export function ReportsPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(true)
   const [period, setPeriod] = useState('month')
   const navigate = useNavigate()
   const params = useParams()
@@ -150,14 +141,12 @@ export function ReportsPage() {
     clearTokens()
     navigate('/')
   }
-  const moduleSlug = reportRoutes.includes(params.module as (typeof reportRoutes)[number])
-    ? (params.module as (typeof reportRoutes)[number])
-    : 'printers'
-  useEffect(() => {
-    if (moduleSlug === 'inventory') {
-      navigate('/reports/inventory', { replace: true })
-    }
-  }, [moduleSlug, navigate])
+
+  if (params.module !== 'audit') {
+    return <Navigate to="/reports/audit" replace />
+  }
+
+  const moduleSlug = 'audit' as const
   const report = reportMeta[moduleSlug]
   const titleIndex = reportRoutes.indexOf(moduleSlug)
   const localizedTitle = t.reports.items[titleIndex] ?? report.title
@@ -171,11 +160,8 @@ export function ReportsPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="reports"
-        activeReport={moduleSlug}
         onNavigate={navigate}
         onLogout={handleLogout}
       />
@@ -187,76 +173,108 @@ export function ReportsPage() {
               <p>{report.subtitle}</p>
             </div>
             <div className="reports__controls">
-              <div className="reports__filters">
-                <button
-                  type="button"
-                  className={period === 'week' ? 'is-active' : undefined}
-                  onClick={() => setPeriod('week')}
-                >
-                  Неделя
-                </button>
-                <button
-                  type="button"
-                  className={period === 'month' ? 'is-active' : undefined}
-                  onClick={() => setPeriod('month')}
-                >
-                  Месяц
-                </button>
-                <button
-                  type="button"
-                  className={period === 'quarter' ? 'is-active' : undefined}
-                  onClick={() => setPeriod('quarter')}
-                >
-                  Квартал
-                </button>
-                <button
-                  type="button"
-                  className={period === 'year' ? 'is-active' : undefined}
-                  onClick={() => setPeriod('year')}
-                >
-                  Год
-                </button>
+              <div className="admin__tabs" aria-label="Report modules">
+                {visibleReportRoutes.map((route, index) => {
+                  const label = t.reports.items[index] ?? reportMeta[route].title
+                  const isActive = moduleSlug === route
+                  return (
+                    <button
+                      key={route}
+                      type="button"
+                      className={isActive ? 'is-active' : undefined}
+                      onClick={() => {
+                        if (route === 'inventory') {
+                          navigate('/reports/inventory')
+                          return
+                        }
+                        navigate(`/reports/${route}`)
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
-              <button className="reports__export" type="button">
-                Экспорт
-              </button>
+              {moduleSlug !== 'audit' ? (
+                <>
+                  <div className="reports__filters">
+                    <button
+                      type="button"
+                      className={period === 'week' ? 'is-active' : undefined}
+                      onClick={() => setPeriod('week')}
+                    >
+                      Неделя
+                    </button>
+                    <button
+                      type="button"
+                      className={period === 'month' ? 'is-active' : undefined}
+                      onClick={() => setPeriod('month')}
+                    >
+                      Месяц
+                    </button>
+                    <button
+                      type="button"
+                      className={period === 'quarter' ? 'is-active' : undefined}
+                      onClick={() => setPeriod('quarter')}
+                    >
+                      Квартал
+                    </button>
+                    <button
+                      type="button"
+                      className={period === 'year' ? 'is-active' : undefined}
+                      onClick={() => setPeriod('year')}
+                    >
+                      Год
+                    </button>
+                  </div>
+                  <button className="reports__export" type="button">
+                    Экспорт
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
 
-          <div className="reports__cards">
-            {report.summary.map((item) => (
-              <article key={item.label}>
-                <div className="reports__value">{item.value}</div>
-                <div className="reports__label">{item.label}</div>
-              </article>
-            ))}
-          </div>
-
-          <section className="reports__table">
-            <header>
-              <div>
-                <strong>Детализация</strong>
-                <span>Актуальные записи по модулю</span>
-              </div>
-              <button type="button">Скачать CSV</button>
-            </header>
-            <div className="reports__table-card">
-              <div className="reports__table-head">
-                {report.columns.map((col) => (
-                  <span key={col}>{col}</span>
+          {moduleSlug === 'audit' ? (
+            <AuditReportModule />
+          ) : (
+            <>
+              <div className="reports__cards">
+                {report.summary.map((item) => (
+                  <article key={item.label}>
+                    <div className="reports__value">{item.value}</div>
+                    <div className="reports__label">{item.label}</div>
+                  </article>
                 ))}
               </div>
-              <div className="reports__table-body">
-                {report.rows.map((row, rowIndex) => (
-                  <div className="reports__table-row" key={`${row[0]}-${rowIndex}`}>
-                    {row.map((cell, cellIndex) => (
-                      <span key={`${rowIndex}-${cellIndex}`}>{cell}</span>
+
+              <section className="reports__table">
+                <header>
+                  <div>
+                    <strong>Детализация</strong>
+                    <span>Актуальные записи по модулю</span>
+                  </div>
+                  <button type="button">Скачать CSV</button>
+                </header>
+                <div className="reports__table-card">
+                  <div className="reports__table-head">
+                    {report.columns.map((col) => (
+                      <span key={col}>{col}</span>
                     ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
+                  <div className="reports__table-body">
+                    {report.rows.map((row, rowIndex) => (
+                      <div className="reports__table-row" key={`${row[0]}-${rowIndex}`}>
+                        {row.map((cell, cellIndex) => (
+                          <span key={`${rowIndex}-${cellIndex}`}>{cell}</span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </main>
     </div>

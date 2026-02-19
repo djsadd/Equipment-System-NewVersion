@@ -4,17 +4,39 @@ import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
 
-type AdminSection =
-  | 'cabinets'
-  | 'users'
-  | 'inventory'
-  | 'departments'
+type AdminSection = 'cabinets' | 'users' | 'inventory' | 'departments' | 'journal' | 'reports'
 
 const adminModules: { id: AdminSection; title: string; desc: string }[] = [
-  { id: 'cabinets', title: 'Кабинеты', desc: 'Карточки кабинетов, ответственные, статусы.' },
-  { id: 'departments', title: 'Департаменты', desc: 'Справочник отделов и привязка к локациям.' },
-  { id: 'users', title: 'Пользователи', desc: 'Роли, доступы, команды.' },
-  { id: 'inventory', title: 'Инвентарь', desc: 'Планы, прогресс, итоги.' },
+  {
+    id: 'cabinets',
+    title: 'Кабинеты',
+    desc: 'Карточки кабинетов, ответственные, статусы.',
+  },
+  {
+    id: 'departments',
+    title: 'Департаменты',
+    desc: 'Справочник отделов и привязка к локациям.',
+  },
+  {
+    id: 'users',
+    title: 'Пользователи',
+    desc: 'Роли, доступы, команды.',
+  },
+  {
+    id: 'inventory',
+    title: 'Инвентарь',
+    desc: 'Планы, прогресс, итоги.',
+  },
+  {
+    id: 'journal',
+    title: 'Журнал',
+    desc: 'История действий и событий.',
+  },
+  {
+    id: 'reports',
+    title: 'Отчеты',
+    desc: 'Сводные отчеты по модулям и инвентаризациям.',
+  },
 ]
 
 export function AdminPage() {
@@ -25,7 +47,6 @@ export function AdminPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
   const handleLogout = () => {
@@ -42,8 +63,6 @@ export function AdminPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="admin"
         onNavigate={navigate}
@@ -77,6 +96,12 @@ export function AdminPage() {
                   if (module.id === 'inventory') {
                     navigate('/admin/inventory')
                   }
+                  if (module.id === 'journal') {
+                    navigate('/admin/journal')
+                  }
+                  if (module.id === 'reports') {
+                    navigate('/reports/audit')
+                  }
                 }}
               >
                 <strong>{module.title}</strong>
@@ -85,7 +110,6 @@ export function AdminPage() {
               </button>
             ))}
           </section>
-
         </section>
       </main>
     </div>

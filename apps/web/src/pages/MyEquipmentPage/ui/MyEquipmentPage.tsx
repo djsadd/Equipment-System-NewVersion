@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
@@ -8,6 +8,7 @@ import { listCabinets, type Cabinet } from '@/shared/api/cabinets'
 import {
   listInventoryTypes,
   listMyInventoryItems,
+  scanMyInventoryItem,
   type InventoryItem,
   type InventoryType,
 } from '@/shared/api/inventory'
@@ -88,6 +89,10 @@ function buildRows(
   })
 }
 
+function normalizeBarcode(value: string) {
+  return value.replace(/\s+/g, '').trim()
+}
+
 export function MyEquipmentPage() {
   const [lang, setLang] = useState<Lang>(() => {
     const stored = localStorage.getItem('dashboard_lang')
@@ -96,9 +101,10 @@ export function MyEquipmentPage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<EquipmentRow | null>(null)
   const [scanOpen, setScanOpen] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null)
   const [items, setItems] = useState<InventoryItem[]>([])
   const [types, setTypes] = useState<InventoryType[]>([])
   const [locations, setLocations] = useState<Cabinet[]>([])
@@ -107,6 +113,9 @@ export function MyEquipmentPage() {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
+  const scanBufferRef = useRef('')
+  const scanLastKeyAtRef = useRef<number>(0)
+  const scanFinalizeTimerRef = useRef<number | null>(null)
   const handleLogout = () => {
     clearTokens()
     navigate('/')
@@ -145,6 +154,120 @@ export function MyEquipmentPage() {
 
   const rows = useMemo(() => buildRows(items, types, locations), [items, types, locations])
 
+  const processScannedBarcode = useCallback(
+    async (rawValue: string) => {
+      const code = normalizeBarcode(rawValue)
+      if (!code) {
+        return
+      }
+
+      setLastScannedCode(code)
+
+      if (isLoading) {
+        setScanError('Данные ещё загружаются. Попробуйте чуть позже.')
+        setScanOpen(true)
+        return
+      }
+
+      let scanned: InventoryItem | null = null
+      try {
+        scanned = await scanMyInventoryItem({ barcode_value: code })
+      } catch {
+        scanned = null
+      }
+
+      const match = scanned ? rows.find((row) => row.id === scanned.id) ?? null : null
+
+      if (!match) {
+        setScanError(`Инвентарь по коду "${code}" не найден.`)
+        setScanOpen(true)
+        return
+      }
+
+      setScanError(null)
+      setScanOpen(false)
+      setSelectedItem(match)
+    },
+    [isLoading, rows]
+  )
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return
+      }
+
+      const target = event.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (target as HTMLElement).isContentEditable) {
+          return
+        }
+      }
+
+      const now = typeof event.timeStamp === 'number' ? event.timeStamp : Date.now()
+      const gap = now - scanLastKeyAtRef.current
+      scanLastKeyAtRef.current = now
+
+      if (gap > 120) {
+        scanBufferRef.current = ''
+        if (scanFinalizeTimerRef.current !== null) {
+          window.clearTimeout(scanFinalizeTimerRef.current)
+          scanFinalizeTimerRef.current = null
+        }
+      }
+
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        const buffer = scanBufferRef.current
+        scanBufferRef.current = ''
+        if (scanFinalizeTimerRef.current !== null) {
+          window.clearTimeout(scanFinalizeTimerRef.current)
+          scanFinalizeTimerRef.current = null
+        }
+
+        const normalized = normalizeBarcode(buffer)
+        if (normalized.length < 6) {
+          return
+        }
+
+        event.preventDefault()
+        processScannedBarcode(normalized)
+        return
+      }
+
+      if (event.key.length === 1) {
+        scanBufferRef.current += event.key
+        if (scanBufferRef.current.length > 128) {
+          scanBufferRef.current = scanBufferRef.current.slice(-128)
+        }
+
+        if (scanFinalizeTimerRef.current !== null) {
+          window.clearTimeout(scanFinalizeTimerRef.current)
+        }
+        scanFinalizeTimerRef.current = window.setTimeout(() => {
+          const buffer = scanBufferRef.current
+          scanBufferRef.current = ''
+          scanFinalizeTimerRef.current = null
+
+          const normalized = normalizeBarcode(buffer)
+          if (normalized.length < 6) {
+            return
+          }
+          processScannedBarcode(normalized)
+        }, 180)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true)
+      if (scanFinalizeTimerRef.current !== null) {
+        window.clearTimeout(scanFinalizeTimerRef.current)
+        scanFinalizeTimerRef.current = null
+      }
+    }
+  }, [processScannedBarcode])
+
   return (
     <div className="dashboard">
       <Sidebar
@@ -154,8 +277,6 @@ export function MyEquipmentPage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="my-equipment"
         onNavigate={navigate}
@@ -170,7 +291,15 @@ export function MyEquipmentPage() {
               <p>Отчёт по оборудованию пользователя: {getUserLabel(currentUser)}</p>
             </div>
             <div className="my-equipment__actions">
-              <button className="my-equipment__scan" type="button" onClick={() => setScanOpen(true)}>
+              <button
+                className="my-equipment__scan"
+                type="button"
+                onClick={() => {
+                  setScanError(null)
+                  setLastScannedCode(null)
+                  setScanOpen(true)
+                }}
+              >
                 Сканировать код
               </button>
               <button className="my-equipment__export" type="button">
@@ -285,13 +414,32 @@ export function MyEquipmentPage() {
           <div className="scan-modal" role="dialog" aria-modal="true">
             <div className="scan-modal__preview">
               <div className="scan-modal__frame" />
-              <span>Наведи камеру на штрих-код</span>
+              <span>Отсканируйте штрих‑код сканером</span>
+              {lastScannedCode ? (
+                <span className="scan-modal__hint">Последний код: {lastScannedCode}</span>
+              ) : (
+                <span className="scan-modal__hint">Ожидание сканирования…</span>
+              )}
+              {scanError ? <span className="scan-modal__error">{scanError}</span> : null}
             </div>
             <div className="scan-modal__actions">
-              <button type="button" onClick={() => setScanOpen(false)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setScanOpen(false)
+                  setScanError(null)
+                }}
+              >
                 Закрыть
               </button>
-              <button className="is-primary" type="button" onClick={() => setScanOpen(false)}>
+              <button
+                className="is-primary"
+                type="button"
+                onClick={() => {
+                  setScanOpen(false)
+                  setScanError(null)
+                }}
+              >
                 Готово
               </button>
             </div>

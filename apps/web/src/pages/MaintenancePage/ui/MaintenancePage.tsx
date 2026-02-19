@@ -27,7 +27,6 @@ export function MaintenancePage() {
     }
     return 'id'
   })
-  const [reportsOpen, setReportsOpen] = useState(false)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
   const handleLogout = () => {
@@ -44,8 +43,6 @@ export function MaintenancePage() {
           setLang(nextLang)
           window.location.reload()
         }}
-        reportsOpen={reportsOpen}
-        onToggleReports={() => setReportsOpen((prev) => !prev)}
         copy={t}
         active="maintenance"
         onNavigate={navigate}

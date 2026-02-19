@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { AdminUser } from '@/shared/api/admin'
 import type { Cabinet } from '@/shared/api/cabinets'
 import type { InventoryItem, InventoryType } from '@/shared/api/inventory'
+import { getInventoryStatusLabel, INVENTORY_STATUS_VALUES } from '@/shared/lib/inventoryStatus'
 
 export type InventoryItemFormPayload = {
   title?: string | null
@@ -16,15 +17,6 @@ export type InventoryItemFormPayload = {
   last_audit_at?: string | null
   inventory_type_id?: number | null
 }
-
-const INVENTORY_STATUS_OPTIONS = [
-  'Новое',
-  'В ремонте',
-  'Отремонтировано',
-  'Списано',
-  'На складе',
-  'Выдано',
-]
 
 type InventoryItemFormProps = {
   types: InventoryType[]
@@ -211,11 +203,20 @@ export function InventoryItemForm({
       <h2>{resolvedHeading}</h2>
       <label>
         Название
-        <input value={title} onChange={(event) => setTitle(event.target.value)} required />
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          maxLength={255}
+          required
+        />
       </label>
       <label>
         Описание
-        <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
+        <textarea
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          maxLength={5000}
+        />
       </label>
       <label>
         Категория
@@ -254,16 +255,20 @@ export function InventoryItemForm({
             {category && <div className="inventory-user-picker__value">Выбрано: {category}</div>}
           </div>
         ) : (
-          <input value={category} onChange={(event) => setCategory(event.target.value)} />
+          <input
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            maxLength={100}
+          />
         )}
       </label>
       <label>
         Статус
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">Не выбран</option>
-          {INVENTORY_STATUS_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
+          {INVENTORY_STATUS_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {getInventoryStatusLabel(value)}
             </option>
           ))}
         </select>

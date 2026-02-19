@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
 from app.models import Role, User
-from app.schemas import AdminUserCreate, AdminUserUpdate, UserPublic, UserRolesUpdate
+from app.schemas import AdminUserCreate, AdminUserUpdate, UserLookupPublic, UserPublic, UserRolesUpdate
 from app.services.auth_service import user_public_from_model
 
 
@@ -31,6 +31,17 @@ def update_user_roles(user_id: int, payload: UserRolesUpdate, db: Session) -> Us
 def list_users(db: Session) -> list[UserPublic]:
     users = db.execute(select(User).order_by(User.created_at.desc())).scalars().all()
     return [user_public_from_model(user) for user in users]
+
+
+def lookup_users(user_ids: list[int], db: Session) -> list[UserLookupPublic]:
+    ids = [int(i) for i in user_ids if isinstance(i, int) or (isinstance(i, str) and str(i).isdigit())]
+    ids = [i for i in ids if i > 0]
+    if not ids:
+        return []
+
+    users = db.execute(select(User).where(User.id.in_(set(ids)))).scalars().all()
+    by_id = {user.id: user for user in users}
+    return [UserLookupPublic.model_validate(by_id[user_id]) for user_id in ids if user_id in by_id]
 
 
 def get_user(user_id: int, db: Session) -> UserPublic:

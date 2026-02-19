@@ -5,12 +5,15 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"},{"name":"inventory","path":"/inventory","upstream":"http://inventory:8000"},{"name":"cabinets","path":"/cabinets","upstream":"http://location:8000"},{"name":"departments","path":"/departments","upstream":"http://departments:8000/departments"}]
+      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"},{"name":"inventory","path":"/inventory","upstream":"http://inventory:8000"},{"name":"cabinets","path":"/cabinets","upstream":"http://location:8000"},{"name":"departments","path":"/departments","upstream":"http://departments:8000/departments"},{"name":"operations","path":"/operations","upstream":"http://operations:8000"},{"name":"audit","path":"/audit","upstream":"http://audit:8000"},{"name":"notifications","path":"/notifications","upstream":"http://notifications:8000"}]
       - ENV=development
     depends_on:
       - auth
       - location
       - departments
+      - operations
+      - audit
+      - notifications
 
   web:
     build:
@@ -107,6 +110,68 @@ services:
       - .env
     environment:
       - DEPARTMENTS_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/departments
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  operations:
+    build:
+      context: ./apps/operations-service
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8005:8000"
+    env_file:
+      - .env
+    environment:
+      - OPERATIONS_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/operations
+      - AUTH_SERVICE_URL=http://auth:8000
+      - PRINT_SERVICE_URL=${PRINT_SERVICE_URL}
+      - PRINT_SERVICE_TIMEOUT=${PRINT_SERVICE_TIMEOUT:-10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  audit:
+    build:
+      context: ./apps/inventory-audit-service
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8006:8000"
+    env_file:
+      - .env
+    environment:
+      - AUDIT_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/audit
+      - AUTH_SERVICE_URL=http://auth:8000
+      - INVENTORY_SERVICE_URL=http://inventory:8000
+      - LOCATION_SERVICE_URL=http://location:8000
+      - DEPARTMENTS_SERVICE_URL=http://departments:8000
+      - OPERATIONS_SERVICE_URL=http://operations:8000
+      - NOTIFICATION_SERVICE_URL=http://notifications:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  notifications:
+    build:
+      context: ./apps/notification-service
+      dockerfile: docker/Dockerfile
+    working_dir: /app
+    ports:
+      - "8007:8000"
+    env_file:
+      - .env
+    environment:
+      - NOTIFICATIONS_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/notifications
+      - AUTH_SERVICE_URL=http://auth:8000
     depends_on:
       postgres:
         condition: service_healthy

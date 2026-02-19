@@ -15,6 +15,11 @@ class Settings:
         self.location_service_url = os.getenv(
             "LOCATION_SERVICE_URL", "http://location:8000"
         )
+        self.operations_service_url = os.getenv(
+            "OPERATIONS_SERVICE_URL", "http://operations:8000"
+        )
+        self.system_admin_role = os.getenv("SYSTEM_ADMIN_ROLE", "system_admin")
+        self.inventory_auditor_role = os.getenv("INVENTORY_AUDITOR_ROLE", "inventory_auditor")
 
 
 settings = Settings()

@@ -1,4 +1,4 @@
-import { loadTokens } from '@/shared/lib/authStorage'
+import { fetchWithAuthRetry } from '@/shared/lib/authFetch'
 
 export type TokenPairResponse = {
   access_token: string
@@ -33,6 +33,17 @@ export type CurrentUser = {
   permissions: string[]
 }
 
+export type UserLookup = {
+  id: number
+  email: string
+  full_name?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  department_id?: number | null
+  role?: string | null
+  is_active: boolean
+}
+
 const AUTH_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
 async function requestJson<T>(path: string, payload: unknown) {
@@ -61,19 +72,7 @@ async function requestJson<T>(path: string, payload: unknown) {
 }
 
 async function requestAuth<T>(path: string, init?: RequestInit) {
-  const token = loadTokens()?.accessToken
-  if (!token) {
-    throw new Error('access_token_missing')
-  }
-
-  const response = await fetch(`${AUTH_BASE}/auth${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-    },
-  })
+  const response = await fetchWithAuthRetry(`${AUTH_BASE}/auth${path}`, init, 'required')
 
   if (!response.ok) {
     let detail = 'Ошибка запроса'
@@ -101,4 +100,15 @@ export function loginUser(payload: LoginPayload) {
 
 export function getCurrentUser() {
   return requestAuth<CurrentUser>('/me')
+}
+
+export function lookupUsers(ids: number[]) {
+  const searchParams = new URLSearchParams()
+  ids.forEach((id) => {
+    if (Number.isFinite(id) && id > 0) {
+      searchParams.append('ids', String(id))
+    }
+  })
+  const query = searchParams.toString()
+  return requestAuth<UserLookup[]>(`/users/lookup${query ? `?${query}` : ''}`)
 }

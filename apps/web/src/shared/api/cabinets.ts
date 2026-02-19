@@ -1,4 +1,4 @@
-import { loadTokens } from '@/shared/lib/authStorage'
+import { fetchWithAuthRetry } from '@/shared/lib/authFetch'
 
 export type Cabinet = {
   id: number
@@ -24,19 +24,7 @@ export type CabinetType = {
 const CABINETS_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
 async function requestCabinets<T>(path: string, init?: RequestInit) {
-  const token = loadTokens()?.accessToken
-  if (!token) {
-    throw new Error('access_token_missing')
-  }
-
-  const response = await fetch(`${CABINETS_BASE}/cabinets${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-    },
-  })
+  const response = await fetchWithAuthRetry(`${CABINETS_BASE}/cabinets${path}`, init, 'required')
 
   if (!response.ok) {
     let detail = 'Ошибка запроса'

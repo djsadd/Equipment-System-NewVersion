@@ -4,7 +4,7 @@ import path from 'node:path'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.VITE_API_PROXY_TARGET || 'http://gateway:8000'
+  const apiTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:8000'
 
   return {
     plugins: [react()],
@@ -38,6 +38,18 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
         '^/departments': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '^/audit': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '^/operations': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '^/notifications': {
           target: apiTarget,
           changeOrigin: true,
         },

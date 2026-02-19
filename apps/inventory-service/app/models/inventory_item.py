@@ -54,6 +54,9 @@ class InventoryItem(Base):
     )
 
     barcode: Mapped[Barcode | None] = relationship(back_populates="inventory_item")
+    barcodes: Mapped[list[Barcode]] = relationship(
+        secondary="inventory_item_barcodes", back_populates="inventory_items"
+    )
     inventory_type: Mapped[InventoryType | None] = relationship(back_populates="items")
     audits: Mapped[list[InventoryAudit]] = relationship(
         back_populates="inventory_item", cascade="all, delete-orphan"

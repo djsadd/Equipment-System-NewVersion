@@ -13,6 +13,7 @@ Large React project skeleton with Feature-Sliced Design (FSD), Vite, and Docker.
 - `apps/web/src/shared` - Reusable UI kit, helpers, config, API base
 - `docker` - Nginx config for production
 - `apps/gateway` - FastAPI API Gateway
+- `apps/notification-service` - FastAPI service for in-app notifications
 
 ## Local dev (without Docker)
 
@@ -44,4 +45,5 @@ Open `http://localhost:8080`.
 - SPA routing handled in `docker/nginx.conf`
 - Gateway is available at `http://localhost:8000` (or via `http://localhost:8080/api/` in prod)
 - Configure upstreams via `GATEWAY_ROUTES` in `docker-compose.yml` (JSON array)
+- Internal service-to-service notification publishing uses `NOTIFICATION_INTERNAL_TOKEN` (see `.env`)
 # Equipment-System-NewVersion

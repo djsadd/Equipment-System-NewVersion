@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserCreate(BaseModel):
@@ -51,6 +51,19 @@ class UserPublic(BaseModel):
     created_at: datetime | None = None
     roles: list[str] = Field(default_factory=list)
     permissions: list[str] = Field(default_factory=list)
+
+
+class UserLookupPublic(BaseModel):
+    id: int
+    email: EmailStr
+    full_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    department_id: int | None = None
+    role: str | None = None
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserRolesUpdate(BaseModel):

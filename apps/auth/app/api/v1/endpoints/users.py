@@ -1,14 +1,23 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, require_system_admin
+from app.core.dependencies import get_current_user, get_db, require_system_admin
 from app.models import User
-from app.schemas import AdminUserCreate, AdminUserUpdate, UserPublic, UserRolesUpdate
+from app.schemas import AdminUserCreate, AdminUserUpdate, UserLookupPublic, UserPublic, UserRolesUpdate
 from app.services import user_service
 
 router = APIRouter()
+
+
+@router.get("/auth/users/lookup", response_model=list[UserLookupPublic])
+def lookup_users(
+    ids: list[int] = Query(default=[], ge=1),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+) -> list[UserLookupPublic]:
+    return user_service.lookup_users(ids, db)
 
 
 @router.put("/auth/users/{user_id}/roles", response_model=UserPublic)

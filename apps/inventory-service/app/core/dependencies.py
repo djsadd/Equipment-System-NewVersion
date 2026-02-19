@@ -39,3 +39,24 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
 
     return data
+
+
+def require_system_admin(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    roles = current_user.get("roles") if isinstance(current_user, dict) else None
+    is_admin = isinstance(roles, list) and settings.system_admin_role in roles
+    if not is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+    return current_user
+
+
+def require_inventory_auditor(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    roles = current_user.get("roles") if isinstance(current_user, dict) else None
+    if isinstance(roles, list) and (
+        settings.system_admin_role in roles or settings.inventory_auditor_role in roles
+    ):
+        return current_user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="auditor_required")
