@@ -19,14 +19,22 @@ export type LoginPayload = {
   password: string
 }
 
+export type PlatonusLoginPayload = {
+  username: string
+  password: string
+}
+
 export type CurrentUser = {
   id: number
   email: string
   full_name?: string | null
   first_name?: string | null
   last_name?: string | null
+  avatar_url?: string | null
   department_id?: number | null
   role?: string | null
+  iin?: string | null
+  person_id?: string | null
   is_active: boolean
   created_at?: string | null
   roles: string[]
@@ -41,6 +49,8 @@ export type UserLookup = {
   last_name?: string | null
   department_id?: number | null
   role?: string | null
+  iin?: string | null
+  person_id?: string | null
   is_active: boolean
 }
 
@@ -98,6 +108,10 @@ export function loginUser(payload: LoginPayload) {
   return requestJson<TokenPairResponse>('/login', payload)
 }
 
+export function loginPlatonus(payload: PlatonusLoginPayload) {
+  return requestJson<TokenPairResponse>('/login/platonus', payload)
+}
+
 export function getCurrentUser() {
   return requestAuth<CurrentUser>('/me')
 }
@@ -111,4 +125,13 @@ export function lookupUsers(ids: number[]) {
   })
   const query = searchParams.toString()
   return requestAuth<UserLookup[]>(`/users/lookup${query ? `?${query}` : ''}`)
+}
+
+export function searchUsers(params?: { q?: string; limit?: number; offset?: number }) {
+  const searchParams = new URLSearchParams()
+  if (params?.q) searchParams.set('q', params.q)
+  if (typeof params?.limit === 'number') searchParams.set('limit', String(params.limit))
+  if (typeof params?.offset === 'number') searchParams.set('offset', String(params.offset))
+  const query = searchParams.toString()
+  return requestAuth<UserLookup[]>(`/users/search${query ? `?${query}` : ''}`)
 }

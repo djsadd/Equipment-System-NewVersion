@@ -1,6 +1,5 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { HomePage } from '@/pages/HomePage/ui/HomePage'
-import { DashboardPage } from '@/pages/DashboardPage/ui/DashboardPage'
 import { InventoryPage } from '@/pages/InventoryPage/ui/InventoryPage'
 import { RoomDetailPage } from '@/pages/RoomDetailPage/ui/RoomDetailPage'
 import { AdminPage } from '@/pages/AdminPage/ui/AdminPage'
@@ -23,9 +22,14 @@ import { AdminInventoryPage } from '@/pages/AdminInventoryPage/ui/AdminInventory
 import { AdminInventoryCreatePage } from '@/pages/AdminInventoryCreatePage/ui/AdminInventoryCreatePage'
 import { AdminJournalPage } from '@/pages/AdminJournalPage/ui/AdminJournalPage'
 import { AdminJournalDetailPage } from '@/pages/AdminJournalDetailPage/ui/AdminJournalDetailPage'
+import { AdminDocumentsPage } from '@/pages/AdminDocumentsPage/ui/AdminDocumentsPage'
 import { ErrorPage } from '@/pages/ErrorPage/ui/ErrorPage'
 import { RequireAdmin } from '@/app/providers/RequireAdmin'
 import { RequireAuth } from '@/app/providers/RequireAuth'
+import { DocumentsPage } from '@/pages/DocumentsPage/ui/DocumentsPage'
+import { DocumentsCreatePage } from '@/pages/DocumentsPage/ui/DocumentsCreatePage'
+import { DocumentsDetailPage } from '@/pages/DocumentsPage/ui/DocumentsDetailPage'
+import { ProfilePage } from '@/pages/ProfilePage/ui/ProfilePage'
 
 export function AppRoutes() {
   return (
@@ -35,7 +39,7 @@ export function AppRoutes() {
         path="/dashboard"
         element={
           <RequireAuth>
-            <DashboardPage />
+            <Navigate to="/profile" replace />
           </RequireAuth>
         }
       />
@@ -208,10 +212,50 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/documents"
+        element={
+          <RequireAuth>
+            <DocumentsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/documents/:id"
+        element={
+          <RequireAuth>
+            <DocumentsDetailPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/documents/create"
+        element={
+          <RequireAdmin>
+            <DocumentsCreatePage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/documents"
+        element={
+          <RequireAdmin>
+            <AdminDocumentsPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
         path="/maintenance"
         element={
           <RequireAuth>
             <MaintenancePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <RequireAuth>
+            <ProfilePage />
           </RequireAuth>
         }
       />

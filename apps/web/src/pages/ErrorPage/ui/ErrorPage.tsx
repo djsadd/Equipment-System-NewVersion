@@ -19,7 +19,7 @@ const ERROR_COPY: Record<number, ErrorCopy> = {
     title: 'Доступ запрещён',
     message: 'У вас нет прав для просмотра этой страницы.',
     primaryLabel: 'В кабинет',
-    primaryTo: '/dashboard',
+    primaryTo: '/profile',
   },
   404: {
     title: 'Страница не найдена',

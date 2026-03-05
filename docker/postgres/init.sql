@@ -10,3 +10,5 @@ SELECT 'CREATE DATABASE audit OWNER auth'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'audit')\gexec
 SELECT 'CREATE DATABASE notifications OWNER auth'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'notifications')\gexec
+SELECT 'CREATE DATABASE documents OWNER auth'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'documents')\gexec

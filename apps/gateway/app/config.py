@@ -23,11 +23,11 @@ DEFAULT_ROUTES: List[Route] = [
     Route(name="audit", path="/audit", upstream="http://inventory-audit:8000"),
     Route(name="inventory-audit", path="/inventory-audit", upstream="http://inventory-audit:8000"),
     Route(name="operations", path="/operations", upstream="http://operations:8000"),
-    Route(name="documents", path="/documents", upstream="http://documents:8000"),
     Route(name="storage", path="/storage", upstream="http://storage:8000"),
     Route(name="auth", path="/auth", upstream="http://auth:8000/auth"),
     Route(name="admin", path="/admin", upstream="http://auth:8000/admin"),
     Route(name="barcode", path="/barcode", upstream="http://barcode:8000"),
+    Route(name="documents", path="/documents", upstream="http://documents:8000"),
 ]
 
 

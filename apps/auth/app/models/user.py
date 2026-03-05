@@ -21,6 +21,8 @@ class User(Base):
     last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     department_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     role: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    iin: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
+    person_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -29,4 +31,9 @@ class User(Base):
     )
     roles: Mapped[List["Role"]] = relationship(
         secondary=user_roles, back_populates="users"
+    )
+    platonus_profile: Mapped["PlatonusProfile | None"] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
     )

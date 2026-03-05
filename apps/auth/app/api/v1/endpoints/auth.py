@@ -5,7 +5,15 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_db
 from app.models import User
-from app.schemas import LoginRequest, LogoutRequest, RefreshRequest, TokenPair, UserCreate, UserPublic
+from app.schemas import (
+    LoginRequest,
+    LogoutRequest,
+    PlatonusLoginRequest,
+    RefreshRequest,
+    TokenPair,
+    UserCreate,
+    UserPublic,
+)
 from app.services import auth_service
 
 router = APIRouter()
@@ -19,6 +27,11 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> UserPublic:
 @router.post("/auth/login", response_model=TokenPair)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenPair:
     return auth_service.login_user(payload, db)
+
+
+@router.post("/auth/login/platonus", response_model=TokenPair)
+def login_platonus(payload: PlatonusLoginRequest, db: Session = Depends(get_db)) -> TokenPair:
+    return auth_service.login_platonus_user(payload, db)
 
 
 @router.post("/auth/refresh", response_model=TokenPair)

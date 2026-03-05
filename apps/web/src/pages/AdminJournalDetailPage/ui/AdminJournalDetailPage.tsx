@@ -257,7 +257,7 @@ export function AdminJournalDetailPage() {
     if (!value) return c.empty
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return value
-    const locale = lang === 'ru' ? 'ru-RU' : lang === 'kk' ? 'kk-KZ' : lang === 'id' ? 'id-ID' : 'en-US'
+    const locale = lang === 'ru' ? 'ru-RU' : lang === 'kk' ? 'kk-KZ' : lang === 'id' ? 'de-DE' : 'en-US'
     return date.toLocaleString(locale)
   }
 

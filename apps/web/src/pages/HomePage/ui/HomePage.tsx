@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { loginUser, registerUser } from '@/shared/api/auth'
+import { loginPlatonus, loginUser, registerUser } from '@/shared/api/auth'
 import { saveTokens } from '@/shared/lib/authStorage'
 import { ensureSession } from '@/shared/lib/authSession'
 
 type Lang = 'ru' | 'en' | 'kk'
 type Mode = 'login' | 'register'
+type LoginMethod = 'email' | 'platonus'
 
 const translations: Record<Lang, Record<string, string>> = {
   ru: {
@@ -13,7 +14,10 @@ const translations: Record<Lang, Record<string, string>> = {
     subtitle: 'Авторизация',
     loginTab: 'Вход',
     registerTab: 'Регистрация',
+    emailMethod: 'Email',
+    platonusMethod: 'Platonus',
     email: 'Email',
+    username: 'Login',
     fullName: 'ФИО',
     password: 'Пароль',
     buttonLogin: 'Войти',
@@ -26,7 +30,10 @@ const translations: Record<Lang, Record<string, string>> = {
     subtitle: 'Authentication',
     loginTab: 'Sign in',
     registerTab: 'Register',
+    emailMethod: 'Email',
+    platonusMethod: 'Platonus',
     email: 'Email',
+    username: 'Username',
     fullName: 'Full name',
     password: 'Password',
     buttonLogin: 'Sign in',
@@ -39,7 +46,10 @@ const translations: Record<Lang, Record<string, string>> = {
     subtitle: 'Авторизация',
     loginTab: 'Кіру',
     registerTab: 'Тіркелу',
+    emailMethod: 'Email',
+    platonusMethod: 'Platonus',
     email: 'Email',
+    username: 'Логин',
     fullName: 'Аты-жөні',
     password: 'Құпиясөз',
     buttonLogin: 'Кіру',
@@ -52,9 +62,12 @@ const translations: Record<Lang, Record<string, string>> = {
 export function HomePage() {
   const [lang, setLang] = useState<Lang>('ru')
   const [mode, setMode] = useState<Mode>('login')
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('email')
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
+  const [platonusUsername, setPlatonusUsername] = useState('')
+  const [platonusPassword, setPlatonusPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
@@ -64,7 +77,7 @@ export function HomePage() {
     ensureSession()
       .then((ok) => {
         if (ok) {
-          navigate('/dashboard')
+          navigate('/profile')
         }
       })
       .catch(() => {
@@ -118,7 +131,10 @@ export function HomePage() {
           <button
             type="button"
             className={mode === 'register' ? 'is-active' : undefined}
-            onClick={() => setMode('register')}
+            onClick={() => {
+              setMode('register')
+              setLoginMethod('email')
+            }}
           >
             {t.registerTab}
           </button>
@@ -137,7 +153,10 @@ export function HomePage() {
                   full_name: fullName || undefined,
                 })
               }
-              const tokens = await loginUser({ email, password })
+              const tokens =
+                mode === 'login' && loginMethod === 'platonus'
+                  ? await loginPlatonus({ username: platonusUsername, password: platonusPassword })
+                  : await loginUser({ email, password })
               saveTokens({
                 accessToken: tokens.access_token,
                 refreshToken: tokens.refresh_token,
@@ -145,7 +164,7 @@ export function HomePage() {
                 accessExpiresAt: tokens.access_expires_at,
                 refreshExpiresAt: tokens.refresh_expires_at,
               })
-              navigate('/dashboard')
+              navigate('/profile')
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Ошибка')
             } finally {
@@ -153,16 +172,48 @@ export function HomePage() {
             }
           }}
         >
-          <label className="auth__field">
-            <span>{t.email}</span>
-            <input
-              type="email"
-              name="email"
-              placeholder={t.email}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
+          {mode === 'login' ? (
+            <div className="auth__tabs" style={{ marginTop: 0 }}>
+              <button
+                type="button"
+                className={loginMethod === 'email' ? 'is-active' : undefined}
+                onClick={() => setLoginMethod('email')}
+              >
+                {t.emailMethod}
+              </button>
+              <button
+                type="button"
+                className={loginMethod === 'platonus' ? 'is-active' : undefined}
+                onClick={() => setLoginMethod('platonus')}
+              >
+                {t.platonusMethod}
+              </button>
+            </div>
+          ) : null}
+
+          {mode === 'login' && loginMethod === 'platonus' ? (
+            <label className="auth__field">
+              <span>{t.username}</span>
+              <input
+                type="text"
+                name="username"
+                placeholder={t.username}
+                value={platonusUsername}
+                onChange={(event) => setPlatonusUsername(event.target.value)}
+              />
+            </label>
+          ) : (
+            <label className="auth__field">
+              <span>{t.email}</span>
+              <input
+                type="email"
+                name="email"
+                placeholder={t.email}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+          )}
           {mode === 'register' ? (
             <label className="auth__field">
               <span>{t.fullName}</span>
@@ -181,8 +232,14 @@ export function HomePage() {
               type="password"
               name="password"
               placeholder={t.password}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              value={mode === 'login' && loginMethod === 'platonus' ? platonusPassword : password}
+              onChange={(event) => {
+                if (mode === 'login' && loginMethod === 'platonus') {
+                  setPlatonusPassword(event.target.value)
+                } else {
+                  setPassword(event.target.value)
+                }
+              }}
             />
           </label>
           {error ? <div className="auth__error">{error}</div> : null}

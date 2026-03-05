@@ -20,5 +20,9 @@ class Settings:
         )
         self.system_admin_role = os.getenv("SYSTEM_ADMIN_ROLE", "system_admin")
 
+        self.platonus_base_url = os.getenv("PLATONUS_BASE_URL", "https://platonus.tau-edu.kz").rstrip("/")
+        self.platonus_headless = os.getenv("PLATONUS_HEADLESS", "true").strip().lower() not in {"0", "false", "no"}
+        self.platonus_timeout_ms = int(os.getenv("PLATONUS_TIMEOUT_MS", "60000"))
+
 
 settings = Settings()

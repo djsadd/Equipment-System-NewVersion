@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"},{"name":"inventory","path":"/inventory","upstream":"http://inventory:8000"},{"name":"cabinets","path":"/cabinets","upstream":"http://location:8000"},{"name":"departments","path":"/departments","upstream":"http://departments:8000/departments"},{"name":"operations","path":"/operations","upstream":"http://operations:8000"},{"name":"audit","path":"/audit","upstream":"http://audit:8000"},{"name":"notifications","path":"/notifications","upstream":"http://notifications:8000"}]
+      - GATEWAY_ROUTES=[{"name":"auth","path":"/auth","upstream":"http://auth:8000/auth"},{"name":"inventory","path":"/inventory","upstream":"http://inventory:8000"},{"name":"cabinets","path":"/cabinets","upstream":"http://location:8000"},{"name":"departments","path":"/departments","upstream":"http://departments:8000/departments"},{"name":"operations","path":"/operations","upstream":"http://operations:8000"},{"name":"audit","path":"/audit","upstream":"http://audit:8000"},{"name":"notifications","path":"/notifications","upstream":"http://notifications:8000"},{"name":"documents","path":"/documents","upstream":"http://documents:8000"}]
       - ENV=development
     depends_on:
       - auth
@@ -14,6 +14,7 @@ services:
       - operations
       - audit
       - notifications
+      - documents
 
   web:
     build:
@@ -27,6 +28,8 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - VITE_API_PROXY_TARGET=http://gateway:8000
+    command: >
+      sh -c "if [ ! -d node_modules/react ]; then npm install; fi && npm run dev"
 
   web_prod:
     build:
@@ -42,6 +45,7 @@ services:
       context: ./apps/auth
     ports:
       - "8001:8000"
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:
@@ -172,6 +176,27 @@ services:
     environment:
       - NOTIFICATIONS_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/notifications
       - AUTH_SERVICE_URL=http://auth:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  documents:
+    build:
+      context: ./apps/documents-service
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8008:8000"
+    env_file:
+      - .env
+    environment:
+      - DOCUMENTS_DATABASE_URL=postgresql+psycopg://auth:auth@postgres:5432/documents
+      - AUTH_SERVICE_URL=http://auth:8000
+      - INVENTORY_SERVICE_URL=http://inventory:8000
+      - LOCATION_SERVICE_URL=http://location:8000
+      - DEPARTMENTS_SERVICE_URL=http://departments:8000
     depends_on:
       postgres:
         condition: service_healthy

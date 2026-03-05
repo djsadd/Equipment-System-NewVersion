@@ -15,6 +15,7 @@ from app.clients import (
     create_internal_notifications,
     list_items_by_room,
     resolve_item_by_barcode,
+    set_item_last_inventory_at,
 )
 from app.core.config import settings
 from app.models import (
@@ -262,6 +263,13 @@ def create_scan(
         db.flush()
         _update_item_result_from_scan(session, scan, now=now, db=db)
         _update_discrepancies_from_scan(session, scan, db=db)
+        if isinstance(scan.item_id, int):
+            set_item_last_inventory_at(
+                token=token,
+                inventory_service_url=settings.inventory_service_url,
+                item_id=scan.item_id,
+                last_inventory_at=now,
+            )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -272,10 +280,24 @@ def create_scan(
         ).scalar_one_or_none()
         if not existing:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="scan_already_exists")
-        _update_item_result_from_scan(session, existing, now=now, db=db)
-        _update_discrepancies_from_scan(session, existing, db=db)
-        db.commit()
-        return existing
+        try:
+            _update_item_result_from_scan(session, existing, now=now, db=db)
+            _update_discrepancies_from_scan(session, existing, db=db)
+            if isinstance(existing.item_id, int):
+                set_item_last_inventory_at(
+                    token=token,
+                    inventory_service_url=settings.inventory_service_url,
+                    item_id=existing.item_id,
+                    last_inventory_at=now,
+                )
+            db.commit()
+            return existing
+        except Exception:
+            db.rollback()
+            raise
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(scan)
     return scan
 

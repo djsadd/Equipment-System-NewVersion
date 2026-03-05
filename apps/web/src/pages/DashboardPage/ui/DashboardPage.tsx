@@ -47,7 +47,7 @@ function getNumberLocale(lang: Lang) {
     case 'kk':
       return 'kk-KZ'
     case 'id':
-      return 'id-ID'
+      return 'de-DE'
     case 'en':
     default:
       return 'en-US'
@@ -270,7 +270,7 @@ export function DashboardPage() {
             <article key={panel.title}>
               <header>
                 <strong>{panel.title}</strong>
-                <button type="button" onClick={() => navigate(panelRoutes[panelIndex] ?? '/dashboard')}>
+                <button type="button" onClick={() => navigate(panelRoutes[panelIndex] ?? '/profile')}>
                   {panel.hint}
                   <span>»</span>
                 </button>

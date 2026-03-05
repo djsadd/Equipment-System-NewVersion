@@ -67,6 +67,22 @@ export function createCabinet(payload: {
   })
 }
 
+export function updateCabinet(
+  roomId: number,
+  payload: {
+    name?: string | null
+    room_type?: string | null
+    responsible_id?: number | null
+    status?: string | null
+  },
+) {
+  return requestCabinets<Cabinet>(`/rooms/${roomId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
 export function listCabinetTypes() {
   return requestCabinets<CabinetType[]>('/room-types')
 }

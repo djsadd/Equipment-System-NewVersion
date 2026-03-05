@@ -1,4 +1,4 @@
-from app.schemas.auth import LoginRequest, LogoutRequest, RefreshRequest, TokenPair
+from app.schemas.auth import LoginRequest, LogoutRequest, PlatonusLoginRequest, RefreshRequest, TokenPair
 from app.schemas.role import (
     PermissionCreate,
     PermissionPublic,
@@ -20,6 +20,7 @@ from app.schemas.user import (
 __all__ = [
     "LoginRequest",
     "LogoutRequest",
+    "PlatonusLoginRequest",
     "RefreshRequest",
     "TokenPair",
     "PermissionCreate",

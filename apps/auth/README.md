@@ -39,6 +39,9 @@ FastAPI микросервис для аутентификации и автор
 - `ACCESS_TOKEN_EXPIRES_MINUTES` — срок жизни access токена (минуты, `15`).
 - `REFRESH_TOKEN_EXPIRES_DAYS` — срок жизни refresh токена (дни, `30`).
 - `SYSTEM_ADMIN_ROLE` — имя системной роли администратора (`system_admin`).
+- `PLATONUS_BASE_URL` — базовый URL Platonus (`https://platonus.tau-edu.kz`).
+- `PLATONUS_HEADLESS` — запуск Chromium в headless режиме (`true`).
+- `PLATONUS_TIMEOUT_MS` — таймаут Playwright (мс, `60000`).
 
 Файл окружения для локального запуска: `apps/auth/.env`.
 
@@ -53,6 +56,8 @@ FastAPI микросервис для аутентификации и автор
 - `0001` — пользователи и refresh токены.
 - `0002` — роли, разрешения и связи.
 - `0003` — профиль пользователя (first_name, last_name, department_id, role).
+- `0004` — идентификаторы пользователя (iin, person_id).
+- `0005` — профиль Platonus (сырые данные + роли).
 
 **Security**
 - Пароли хэшируются `bcrypt` (через `passlib`).
@@ -71,6 +76,7 @@ FastAPI микросервис для аутентификации и автор
 Auth
 - `POST /auth/register` — регистрация пользователя.
 - `POST /auth/login` — логин, выдача пары токенов.
+- `POST /auth/login/platonus` — логин через Platonus (username/password), авто-синхронизация профиля.
 - `POST /auth/refresh` — обновление токенов.
 - `POST /auth/logout` — отзыв refresh токена.
 - `GET /auth/me` — текущий пользователь (access токен).

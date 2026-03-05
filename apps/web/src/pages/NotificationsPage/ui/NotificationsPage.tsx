@@ -28,7 +28,7 @@ export function NotificationsPage() {
   const t = useMemo(() => dashboardCopy[lang], [lang])
 
   const locale =
-    lang === 'ru' ? 'ru-RU' : lang === 'kk' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'id-ID'
+    lang === 'ru' ? 'ru-RU' : lang === 'kk' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'de-DE'
 
   const formatTime = (value?: string | null) => {
     if (!value) return ''

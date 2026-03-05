@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
@@ -44,6 +44,37 @@ def lookup_users(user_ids: list[int], db: Session) -> list[UserLookupPublic]:
     return [UserLookupPublic.model_validate(by_id[user_id]) for user_id in ids if user_id in by_id]
 
 
+def search_users(*, q: str | None, limit: int, offset: int, db: Session) -> list[UserLookupPublic]:
+    stmt = select(User).where(User.is_active.is_(True))
+
+    if q is not None and q.strip():
+        query = q.strip()
+        if query.isdigit():
+            stmt = stmt.where(
+                or_(
+                    User.id == int(query),
+                    User.iin == query,
+                    User.person_id == query,
+                )
+            )
+        else:
+            like = f"%{query}%"
+            stmt = stmt.where(
+                or_(
+                    User.full_name.ilike(like),
+                    User.email.ilike(like),
+                    User.first_name.ilike(like),
+                    User.last_name.ilike(like),
+                    User.iin.ilike(like),
+                    User.person_id.ilike(like),
+                )
+            )
+
+    stmt = stmt.order_by(User.created_at.desc()).limit(limit).offset(offset)
+    users = db.execute(stmt).scalars().all()
+    return [UserLookupPublic.model_validate(user) for user in users]
+
+
 def get_user(user_id: int, db: Session) -> UserPublic:
     user = db.get(User, user_id)
     if not user:
@@ -64,6 +95,8 @@ def create_user(payload: AdminUserCreate, db: Session) -> UserPublic:
         last_name=payload.last_name,
         department_id=payload.department_id,
         role=payload.role,
+        iin=payload.iin,
+        person_id=payload.person_id,
         is_active=payload.is_active,
     )
     try:
@@ -116,6 +149,10 @@ def update_user(user_id: int, payload: AdminUserUpdate, db: Session) -> UserPubl
         user.department_id = payload.department_id
     if payload.role is not None:
         user.role = payload.role
+    if payload.iin is not None:
+        user.iin = payload.iin
+    if payload.person_id is not None:
+        user.person_id = payload.person_id
     if payload.is_active is not None:
         user.is_active = payload.is_active
 

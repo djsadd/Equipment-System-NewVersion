@@ -4,7 +4,14 @@ import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
 
-type AdminSection = 'cabinets' | 'users' | 'inventory' | 'departments' | 'journal' | 'reports'
+type AdminSection =
+  | 'cabinets'
+  | 'users'
+  | 'inventory'
+  | 'departments'
+  | 'journal'
+  | 'reports'
+  | 'documents'
 
 const adminModules: { id: AdminSection; title: string; desc: string }[] = [
   {
@@ -36,6 +43,11 @@ const adminModules: { id: AdminSection; title: string; desc: string }[] = [
     id: 'reports',
     title: 'Отчеты',
     desc: 'Сводные отчеты по модулям и инвентаризациям.',
+  },
+  {
+    id: 'documents',
+    title: 'Документы',
+    desc: 'Управление DOCX-шаблонами и генерация служебных документов.',
   },
 ]
 
@@ -101,6 +113,9 @@ export function AdminPage() {
                   }
                   if (module.id === 'reports') {
                     navigate('/reports/audit')
+                  }
+                  if (module.id === 'documents') {
+                    navigate('/admin/documents')
                   }
                 }}
               >

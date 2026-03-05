@@ -5,6 +5,7 @@ import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import {
   createCabinetType,
   createCabinet,
+  updateCabinet,
   listCabinets,
   listCabinetTypes,
   type Cabinet,
@@ -19,6 +20,7 @@ type CabinetAdminTab = 'cabinets' | 'types'
 type ModalState =
   | { type: 'cabinet-view'; item: Cabinet }
   | { type: 'cabinet-create' }
+  | { type: 'cabinet-edit'; item: Cabinet }
   | { type: 'type-view'; item: CabinetType }
   | { type: 'type-create' }
   | null
@@ -166,6 +168,26 @@ export function AdminCabinetsPage() {
     return new Map(users.map((user) => [user.id, user]))
   }, [users])
 
+  const openCabinetEdit = (cabinet: Cabinet) => {
+    setActionError(null)
+    setCabinetName(cabinet.name ?? '')
+    setCabinetType(cabinet.room_type ?? '')
+    setCabinetResponsibleId(cabinet.responsible_id ? String(cabinet.responsible_id) : '')
+    setResponsibleSearch(() => {
+      const responsibleId = cabinet.responsible_id
+      if (!responsibleId) {
+        return ''
+      }
+      const user = userById.get(responsibleId)
+      if (!user) {
+        return `ID ${responsibleId}`
+      }
+      return getUserLabel(user)
+    })
+    setCabinetStatus(cabinet.status || 'Активен')
+    setModal({ type: 'cabinet-edit', item: cabinet })
+  }
+
   const handleTypeCreate = async (event: React.FormEvent) => {
     event.preventDefault()
     const name = typeName.trim()
@@ -195,14 +217,19 @@ export function AdminCabinetsPage() {
     if (!name || !roomType) {
       return
     }
-    const responsibleId = cabinetResponsibleId.trim()
+    const responsibleIdRaw = cabinetResponsibleId.trim()
+    const responsibleId = responsibleIdRaw ? Number(responsibleIdRaw) : null
+    if (responsibleIdRaw && !Number.isFinite(responsibleId)) {
+      setActionError('ID ответственного должен быть числом')
+      return
+    }
     setActionBusy(true)
     setActionError(null)
     try {
       await createCabinet({
         name,
         room_type: roomType,
-        responsible_id: responsibleId ? Number(responsibleId) : null,
+        responsible_id: responsibleId,
         status: cabinetStatus,
       })
       const data = await listCabinets()
@@ -214,6 +241,38 @@ export function AdminCabinetsPage() {
       setModal(null)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Не удалось создать кабинет')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleCabinetUpdate = async (roomId: number, event: React.FormEvent) => {
+    event.preventDefault()
+    const name = cabinetName.trim()
+    const roomType = cabinetType.trim()
+    if (!name || !roomType) {
+      return
+    }
+    const responsibleIdRaw = cabinetResponsibleId.trim()
+    const responsibleId = responsibleIdRaw ? Number(responsibleIdRaw) : null
+    if (responsibleIdRaw && !Number.isFinite(responsibleId)) {
+      setActionError('ID ответственного должен быть числом')
+      return
+    }
+    setActionBusy(true)
+    setActionError(null)
+    try {
+      await updateCabinet(roomId, {
+        name,
+        room_type: roomType,
+        responsible_id: responsibleId,
+        status: cabinetStatus,
+      })
+      const data = await listCabinets()
+      setCabinets(data)
+      setModal(null)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Не удалось обновить кабинет')
     } finally {
       setActionBusy(false)
     }
@@ -449,8 +508,103 @@ export function AdminCabinetsPage() {
                   <button type="button" onClick={() => setModal(null)}>
                     Закрыть
                   </button>
+                  <button type="button" className="is-primary" onClick={() => openCabinetEdit(modal.item)}>
+                    Редактировать
+                  </button>
                 </div>
               </>
+            )}
+            {modal.type === 'cabinet-edit' && (
+              <form className="admin__form" onSubmit={(event) => handleCabinetUpdate(modal.item.id, event)}>
+                <h2>Редактировать кабинет</h2>
+                <label>
+                  Название
+                  <input value={cabinetName} onChange={(event) => setCabinetName(event.target.value)} required />
+                </label>
+                <label>
+                  Тип кабинета
+                  {cabinetTypes.length > 0 ? (
+                    <select value={cabinetType} onChange={(event) => setCabinetType(event.target.value)} required>
+                      <option value="" disabled>
+                        Выберите тип
+                      </option>
+                      {cabinetTypes.map((type) => (
+                        <option key={type.id} value={type.name}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input value={cabinetType} onChange={(event) => setCabinetType(event.target.value)} required />
+                  )}
+                </label>
+                <label>
+                  Ответственное лицо (ID)
+                  {users.length > 0 ? (
+                    <div className="inventory-user-picker">
+                      <input
+                        value={responsibleSearch}
+                        onChange={(event) => {
+                          setResponsibleSearch(event.target.value)
+                          setCabinetResponsibleId('')
+                        }}
+                        onFocus={() => setShowUserList(true)}
+                        onBlur={() => {
+                          window.setTimeout(() => setShowUserList(false), 120)
+                        }}
+                        placeholder="ФИО, почта или отдел"
+                      />
+                      {usersLoading && <div className="inventory-user-picker__hint">Загрузка пользователей...</div>}
+                      {!usersLoading && usersError && <div className="inventory-user-picker__error">{usersError}</div>}
+                      {!usersLoading && !usersError && showUserList && filteredUsers.length > 0 && (
+                        <div className="inventory-user-picker__list">
+                          {filteredUsers.map((user) => (
+                            <button
+                              key={user.id}
+                              type="button"
+                              className="inventory-user-picker__option"
+                              onClick={() => {
+                                setCabinetResponsibleId(String(user.id))
+                                setResponsibleSearch(getUserLabel(user))
+                                setShowUserList(false)
+                              }}
+                            >
+                              <span className="inventory-user-picker__name">{getUserLabel(user)}</span>
+                              <span className="inventory-user-picker__meta">{getUserMeta(user)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {cabinetResponsibleId && (
+                        <div className="inventory-user-picker__value">Выбрано: ID {cabinetResponsibleId}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <input
+                      value={cabinetResponsibleId}
+                      onChange={(event) => setCabinetResponsibleId(event.target.value)}
+                      inputMode="numeric"
+                      placeholder="Например, 12"
+                    />
+                  )}
+                </label>
+                <label>
+                  Статус
+                  <select value={cabinetStatus} onChange={(event) => setCabinetStatus(event.target.value)}>
+                    <option value="Активен">Активен</option>
+                    <option value="Неактивен">Неактивен</option>
+                  </select>
+                </label>
+                {actionError && <p>{actionError}</p>}
+                <div className="inventory__actions">
+                  <button type="button" onClick={() => setModal(null)} disabled={actionBusy}>
+                    Отмена
+                  </button>
+                  <button type="submit" className="is-primary" disabled={actionBusy}>
+                    Сохранить
+                  </button>
+                </div>
+              </form>
             )}
             {modal.type === 'type-view' && (
               <>

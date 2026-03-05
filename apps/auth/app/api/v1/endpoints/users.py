@@ -13,11 +13,22 @@ router = APIRouter()
 
 @router.get("/auth/users/lookup", response_model=list[UserLookupPublic])
 def lookup_users(
-    ids: list[int] = Query(default=[], ge=1),
+    ids: list[int] = Query(default=[]),
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ) -> list[UserLookupPublic]:
     return user_service.lookup_users(ids, db)
+
+
+@router.get("/auth/users/search", response_model=list[UserLookupPublic])
+def search_users(
+    q: str | None = Query(default=None, max_length=100),
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+) -> list[UserLookupPublic]:
+    return user_service.search_users(q=q, limit=limit, offset=offset, db=db)
 
 
 @router.put("/auth/users/{user_id}/roles", response_model=UserPublic)

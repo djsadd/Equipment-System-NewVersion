@@ -248,7 +248,7 @@ export function AdminUsersPage() {
               <p>Создание, редактирование, просмотр и удаление доступов.</p>
             </div>
             <div className="admin__actions">
-              <button type="button" onClick={() => navigate('/dashboard')}>
+              <button type="button" onClick={() => navigate('/profile')}>
                 Вернуться в кабинет
               </button>
               {activeTab === 'users' && (
@@ -459,6 +459,10 @@ export function AdminUsersPage() {
                 <div className="room__modal-grid">
                   <span>Статус</span>
                   <strong>{modal.item.is_active ? 'Активен' : 'Приостановлен'}</strong>
+                  <span>ИИН</span>
+                  <strong>{modal.item.iin ?? '—'}</strong>
+                  <span>Person ID</span>
+                  <strong>{modal.item.person_id ?? '—'}</strong>
                   <span>Роли</span>
                   <strong>{modal.item.roles.join(', ') || '—'}</strong>
                   <span>Разрешения</span>
@@ -513,6 +517,8 @@ export function AdminUsersPage() {
                       last_name: payload.last_name ?? undefined,
                       department_id: payload.department_id ?? undefined,
                       role: payload.role ?? undefined,
+                      iin: payload.iin ?? undefined,
+                      person_id: payload.person_id ?? undefined,
                       is_active: payload.is_active,
                       role_ids: payload.role_ids ?? undefined,
                     }
@@ -652,6 +658,8 @@ type UserFormProps = {
     last_name?: string | null
     department_id?: number | null
     role?: string | null
+    iin?: string | null
+    person_id?: string | null
     is_active?: boolean
     role_ids?: number[] | null
   }) => void
@@ -680,6 +688,8 @@ function UserForm({
   const [departmentId, setDepartmentId] = useState(
     initial?.department_id ? String(initial.department_id) : ''
   )
+  const [iin, setIin] = useState(initial?.iin ?? '')
+  const [personId, setPersonId] = useState(initial?.person_id ?? '')
   const [departmentSearch, setDepartmentSearch] = useState('')
   const [showDepartmentList, setShowDepartmentList] = useState(false)
   const [role, setRole] = useState(initial?.role ?? '')
@@ -729,6 +739,8 @@ function UserForm({
       last_name: lastName || undefined,
       department_id: departmentId ? Number(departmentId) : undefined,
       role: role || undefined,
+      iin: iin || undefined,
+      person_id: personId || undefined,
       is_active: isActive,
       role_ids: roleIds,
     }
@@ -769,6 +781,23 @@ function UserForm({
       <label>
         Фамилия
         <input value={lastName} onChange={(event) => setLastName(event.target.value)} />
+      </label>
+      <label>
+        ИИН
+        <input
+          value={iin}
+          inputMode="numeric"
+          maxLength={12}
+          placeholder="12 цифр"
+          onChange={(event) => {
+            const next = event.target.value.replace(/\D/g, '').slice(0, 12)
+            setIin(next)
+          }}
+        />
+      </label>
+      <label>
+        Person ID
+        <input value={personId} maxLength={50} onChange={(event) => setPersonId(event.target.value)} />
       </label>
       <label>
         Отдел

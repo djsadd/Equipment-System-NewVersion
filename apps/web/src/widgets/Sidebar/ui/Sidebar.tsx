@@ -1,5 +1,8 @@
+import { useEffect, useMemo, useState } from 'react'
 import type { Lang } from '@/shared/config/dashboardCopy'
 import { hasSystemAdminRole } from '@/shared/lib/authStorage'
+import logoSrc from '@/images/Logo+RGB.png'
+import { getCurrentUser, type CurrentUser } from '@/shared/api/auth'
 
 type SidebarProps = {
   lang: Lang
@@ -11,6 +14,7 @@ type SidebarProps = {
     admin: string
   }
   active:
+    | 'profile'
     | 'dashboard'
     | 'inventory'
     | 'my-equipment'
@@ -18,6 +22,7 @@ type SidebarProps = {
     | 'admin'
     | 'notifications'
     | 'cabinets'
+    | 'documents'
     | 'reports'
   onNavigate: (path: string) => void
   onLogout: () => void
@@ -82,20 +87,120 @@ export function Sidebar({
   onLogout,
 }: SidebarProps) {
   const isSystemAdmin = hasSystemAdminRole()
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const user = await getCurrentUser()
+        if (!cancelled) {
+          setCurrentUser(user)
+        }
+      } catch {
+        if (!cancelled) {
+          setCurrentUser(null)
+        }
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const profile = useMemo(() => {
+    const user = currentUser
+    if (!user) {
+      return {
+        name: lang === 'ru' ? 'Профиль' : lang === 'kk' ? 'Профиль' : lang === 'en' ? 'Profile' : 'Profil',
+        role: lang === 'ru' ? 'Пользователь' : lang === 'kk' ? 'Пайдаланушы' : lang === 'en' ? 'User' : 'Benutzer',
+        avatarUrl: null as string | null,
+        initials: '?',
+      }
+    }
+
+    const fullName = (user.full_name ?? '').trim()
+    const combinedName = [user.first_name, user.last_name]
+      .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+      .join(' ')
+      .trim()
+    const name = fullName.length > 0 ? fullName : combinedName.length > 0 ? combinedName : user.email
+
+    const role = (user.role ?? (user.roles?.[0] ?? '')).trim()
+    const roleLabel =
+      role.length > 0
+        ? role
+        : lang === 'ru'
+          ? 'Пользователь'
+          : lang === 'kk'
+            ? 'Пайдаланушы'
+            : lang === 'en'
+              ? 'User'
+              : 'Benutzer'
+
+    const anyUser = user as unknown as { avatar_url?: unknown; avatarUrl?: unknown; avatar?: unknown }
+    const maybeAvatarUrl = anyUser.avatar_url ?? anyUser.avatarUrl ?? anyUser.avatar
+    const avatarUrl = typeof maybeAvatarUrl === 'string' && maybeAvatarUrl.trim().length > 0 ? maybeAvatarUrl : null
+
+    const initials = name
+      .split(' ')
+      .filter((part) => part.trim().length > 0)
+      .slice(0, 2)
+      .map((part) => part.trim()[0]?.toUpperCase())
+      .filter((ch): ch is string => typeof ch === 'string' && ch.length > 0)
+      .join('')
+
+    return { name, role: roleLabel, avatarUrl, initials: initials.length > 0 ? initials : '?' }
+  }, [currentUser, lang])
+
+  const logoutLabel = useMemo(() => {
+    switch (lang) {
+      case 'ru':
+        return 'Выход'
+      case 'kk':
+        return 'Шығу'
+      case 'en':
+        return 'Logout'
+      case 'id':
+      default:
+        return 'Abmelden'
+    }
+  }, [lang])
+
+  const profileNavLabel = useMemo(() => {
+    switch (lang) {
+      case 'ru':
+        return 'Профиль'
+      case 'kk':
+        return 'Профиль'
+      case 'en':
+        return 'Profile'
+      case 'id':
+      default:
+        return 'Profil'
+    }
+  }, [lang])
   return (
     <aside className="dashboard__aside">
       <div className="dashboard__logo">
-        <div className="dashboard__avatar" />
-        <span>Logo</span>
+        <img
+          className="dashboard__logo-image"
+          src={logoSrc}
+          alt="Equipment System"
+        />
       </div>
       <nav className="dashboard__nav">
         <button
           type="button"
-          className={active === 'dashboard' ? 'is-active' : undefined}
-          onClick={() => onNavigate('/dashboard')}
+          className={active === 'profile' ? 'is-active' : undefined}
+          onClick={() => onNavigate('/profile')}
         >
           <span className="dashboard__nav-icon">{navIcons[0]}</span>
-          {copy.nav[0]}
+          {profileNavLabel}
         </button>
         <button
           type="button"
@@ -137,6 +242,14 @@ export function Sidebar({
           <span className="dashboard__nav-icon">{navIcons[6]}</span>
           {copy.cabinets}
         </button>
+        <button
+          type="button"
+          className={active === 'documents' ? 'is-active' : undefined}
+          onClick={() => onNavigate('/documents')}
+        >
+          <span className="dashboard__nav-icon">{navIcons[7]}</span>
+          Документы
+        </button>
         {isSystemAdmin ? (
           <button
             type="button"
@@ -147,9 +260,34 @@ export function Sidebar({
             {copy.admin}
           </button>
         ) : null}
-        <button type="button">
-          <span className="dashboard__nav-icon">{navIcons[7]}</span>
-          {copy.nav[4]}
+        <button type="button" onClick={onLogout}>
+          <span className="dashboard__nav-icon">
+            <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+              <path
+                d="M10 17l-1 3h11V4H9l1 3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M4 12h11"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M7 9l-3 3 3 3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          {logoutLabel}
         </button>
       </nav>
       <div className="dashboard__lang">
@@ -160,7 +298,7 @@ export function Sidebar({
             className={lang === 'id' ? 'is-active' : undefined}
             onClick={() => onLangChange('id')}
           >
-            ID
+            DE
           </button>
           <button
             type="button"
@@ -186,11 +324,23 @@ export function Sidebar({
         </div>
       </div>
       <div className="dashboard__profile">
-        <div className="dashboard__avatar" />
-        <div>
-          <div className="dashboard__name">Nama</div>
-          <div className="dashboard__role">Jabatan</div>
-        </div>
+        <button
+          type="button"
+          className="dashboard__profile-link"
+          onClick={() => onNavigate('/profile')}
+        >
+          <div className="dashboard__avatar" aria-hidden="true">
+            {profile.avatarUrl ? (
+              <img className="dashboard__avatar-image" src={profile.avatarUrl} alt={profile.name} />
+            ) : (
+              <span className="dashboard__avatar-initials">{profile.initials}</span>
+            )}
+          </div>
+          <div>
+            <div className="dashboard__name">{profile.name}</div>
+            <div className="dashboard__role">{profile.role}</div>
+          </div>
+        </button>
         <button
           className="dashboard__logout"
           type="button"

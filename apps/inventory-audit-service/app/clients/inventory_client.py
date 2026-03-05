@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -116,3 +117,38 @@ def bulk_move_items(
             detail="inventory_service_invalid_response",
         )
     return data
+
+
+def set_item_last_inventory_at(
+    *,
+    token: str | None,
+    inventory_service_url: str,
+    item_id: int,
+    last_inventory_at: datetime,
+) -> None:
+    headers: dict[str, str] = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        with httpx.Client(timeout=10) as client:
+            response = client.put(
+                f"{inventory_service_url}/items/{item_id}",
+                headers=headers,
+                json={"last_inventory_at": last_inventory_at.isoformat()},
+            )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="inventory_service_unavailable",
+        )
+
+    if response.status_code == status.HTTP_403_FORBIDDEN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="inventory_forbidden")
+    if response.status_code == status.HTTP_404_NOT_FOUND:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="item_not_found")
+    if response.status_code != status.HTTP_200_OK:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="inventory_service_error",
+        )

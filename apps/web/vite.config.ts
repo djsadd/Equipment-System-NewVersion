@@ -53,6 +53,10 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
         },
+        '^/documents': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
       },
     },
     preview: {

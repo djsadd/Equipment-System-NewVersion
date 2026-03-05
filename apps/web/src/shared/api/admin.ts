@@ -8,6 +8,8 @@ export type AdminUser = {
   last_name?: string | null
   department_id?: number | null
   role?: string | null
+  iin?: string | null
+  person_id?: string | null
   is_active: boolean
   created_at?: string | null
   roles: string[]
@@ -68,6 +70,8 @@ export type AdminUserCreatePayload = {
   last_name?: string | null
   department_id?: number | null
   role?: string | null
+  iin?: string | null
+  person_id?: string | null
   is_active?: boolean
   role_ids?: number[]
 }
@@ -80,6 +84,8 @@ export type AdminUserUpdatePayload = {
   last_name?: string | null
   department_id?: number | null
   role?: string | null
+  iin?: string | null
+  person_id?: string | null
   is_active?: boolean | null
   role_ids?: number[] | null
 }

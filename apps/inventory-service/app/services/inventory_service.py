@@ -5,7 +5,14 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 
-from app.models import Barcode, InventoryItem, InventoryItemBarcode, InventoryType
+from app.models import (
+    Barcode,
+    InventoryCategory,
+    InventoryItem,
+    InventoryItemBarcode,
+    InventoryType,
+)
+from app.models.inventory_status import InventoryStatus
 from app.schemas import InventoryItemCreate, InventoryItemUpdate
 from app.schemas.barcode import BarcodeCreate
 from app.services import barcode_service
@@ -47,6 +54,132 @@ def list_items_for_location(location_id: int, db: Session) -> list[InventoryItem
         .scalars()
         .all()
     )
+
+
+def search_items(
+    *,
+    db: Session,
+    page: int,
+    page_size: int,
+    q: str | None = None,
+    status_value: InventoryStatus | None = None,
+    category: str | None = None,
+    inventory_type_id: int | None = None,
+    location_id: int | None = None,
+    responsible_id: int | None = None,
+) -> tuple[list[InventoryItem], int]:
+    filters: list[object] = []
+
+    if status_value is not None:
+        filters.append(InventoryItem.status == status_value)
+    if category:
+        filters.append(InventoryItem.category == category)
+    if inventory_type_id is not None:
+        filters.append(InventoryItem.inventory_type_id == inventory_type_id)
+    if location_id is not None:
+        filters.append(InventoryItem.location_id == location_id)
+    if responsible_id is not None:
+        filters.append(InventoryItem.responsible_id == responsible_id)
+
+    query = (q or "").strip()
+    if query:
+        lowered = query.lower()
+        search_conditions: list[object] = [
+            func.lower(InventoryItem.title).like(f"%{lowered}%"),
+            func.lower(func.coalesce(InventoryItem.description, "")).like(f"%{lowered}%"),
+            func.lower(func.coalesce(InventoryItem.category, "")).like(f"%{lowered}%"),
+        ]
+        if query.isdigit():
+            try:
+                search_conditions.append(InventoryItem.id == int(query))
+            except ValueError:
+                pass
+        filters.append(or_(*search_conditions))
+
+    total = db.execute(select(func.count()).select_from(InventoryItem).where(*filters)).scalar_one()
+
+    offset = (page - 1) * page_size
+    items = (
+        db.execute(
+            select(InventoryItem)
+            .where(*filters)
+            .options(selectinload(InventoryItem.barcodes))
+            .order_by(InventoryItem.id)
+            .offset(offset)
+            .limit(page_size)
+        )
+        .scalars()
+        .all()
+    )
+
+    return items, int(total)
+
+
+def list_item_categories(db: Session) -> list[str]:
+    category_set: set[str] = set()
+
+    item_rows = (
+        db.execute(
+            select(func.trim(InventoryItem.category))
+            .where(InventoryItem.category.is_not(None))
+            .distinct()
+        )
+        .scalars()
+        .all()
+    )
+    for value in item_rows:
+        if not isinstance(value, str):
+            continue
+        trimmed = value.strip()
+        if trimmed:
+            category_set.add(trimmed)
+
+    ref_rows = (
+        db.execute(select(func.trim(InventoryCategory.name)).distinct())
+        .scalars()
+        .all()
+    )
+    for value in ref_rows:
+        if not isinstance(value, str):
+            continue
+        trimmed = value.strip()
+        if trimmed:
+            category_set.add(trimmed)
+
+    return sorted(category_set, key=lambda value: value.lower())
+
+
+def create_item_category(*, db: Session, name: str) -> InventoryCategory:
+    raw = str(name).strip()
+    if not raw:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="category_required")
+    if len(raw) > 100:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="category_too_long")
+
+    existing = (
+        db.execute(select(InventoryCategory).where(func.lower(InventoryCategory.name) == raw.lower()))
+        .scalars()
+        .first()
+    )
+    if existing:
+        return existing
+
+    category = InventoryCategory(name=raw)
+    db.add(category)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = (
+            db.execute(select(InventoryCategory).where(func.lower(InventoryCategory.name) == raw.lower()))
+            .scalars()
+            .first()
+        )
+        if existing:
+            return existing
+        raise
+    db.refresh(category)
+    return category
 
 
 def get_item(item_id: int, db: Session) -> InventoryItem:

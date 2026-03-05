@@ -26,66 +26,59 @@ export const dashboardCopy: Record<
   }
 > = {
   id: {
-    title: 'Dashboard Sistem Manajemen Inventaris & Peralatan',
-    greeting: 'Halo, Nama!',
-    nav: ['Dashboard', 'Inventaris', 'Pemeliharaan', 'Notifikasi', 'Pengaturan'],
+    title: 'Dashboard für Geräte- & Inventarverwaltung',
+    greeting: 'Hallo, Name!',
+    nav: ['Übersicht', 'Inventar', 'Wartung', 'Benachrichtigungen', 'Einstellungen'],
     equipment: {
-      title: 'Peralatan',
-      items: ['Penerbitan Peralatan', 'Peralatan Saya', 'Pengembalian'],
+      title: 'Geräte',
+      items: ['Geräte ausgeben', 'Meine Geräte', 'Rückgabe'],
     },
     reports: {
-      title: 'Laporan',
-      items: [
-        'Audit',
-        'Komputer',
-        'Peralatan',
-        'Cartridge',
-        'Inventaris',
-        'Unggahan',
-      ],
+      title: 'Berichte',
+      items: ['Audit', 'Computer', 'Geräte', 'Kartuschen', 'Inventar', 'Uploads'],
     },
-    cabinets: 'Ruangan',
+    cabinets: 'Räume',
     admin: 'Admin',
-    cards: ['Manajer Aset', 'Supervisor', 'Tim Operasional', 'Laporan'],
+    cards: ['Asset Manager', 'Supervisor', 'Operations', 'Berichte'],
     panels: [
       {
-        title: 'Inventory',
-        hint: 'Go to Configuration',
+        title: 'Inventar',
+        hint: 'Zur Konfiguration',
         rows: [
-          { label: 'Total Items', value: '1,248' },
-          { label: 'Equipment Groups', value: '24' },
+          { label: 'Gesamtanzahl', value: '1,248' },
+          { label: 'Gerätegruppen', value: '24' },
         ],
       },
       {
         title: 'Assets',
-        hint: 'Go to Assets Page',
+        hint: 'Zur Asset-Seite',
         rows: [
-          { label: 'Assigned Assets', value: '845' },
-          { label: 'Most Used Item', value: 'ThinkPad T14' },
+          { label: 'Zugewiesen', value: '845' },
+          { label: 'Am häufigsten', value: 'ThinkPad T14' },
         ],
       },
       {
-        title: 'Warehouses',
-        hint: 'Go to Location Management',
+        title: 'Lager',
+        hint: 'Zur Standortverwaltung',
         rows: [
-          { label: 'Total Locations', value: '04' },
-          { label: 'Active Users', value: '52' },
+          { label: 'Standorte', value: '04' },
+          { label: 'Aktive Nutzer', value: '52' },
         ],
       },
       {
-        title: 'Quick Report',
-        hint: 'January 2026',
+        title: 'Kurzbericht',
+        hint: 'Januar 2026',
         rows: [
           { label: 'Transfers', value: '2,885' },
-          { label: 'Write-off Acts', value: '97' },
+          { label: 'Abschreibungen', value: '97' },
         ],
       },
     ],
     quick: [
-      { label: 'Total Items', value: '1,248' },
-      { label: 'Equipment Groups', value: '24' },
-      { label: 'Assigned Assets', value: '845' },
-      { label: 'Most Used Item', value: 'ThinkPad T14' },
+      { label: 'Gesamtanzahl', value: '1,248' },
+      { label: 'Gerätegruppen', value: '24' },
+      { label: 'Zugewiesen', value: '845' },
+      { label: 'Am häufigsten', value: 'ThinkPad T14' },
     ],
   },
   ru: {

@@ -4,8 +4,9 @@ import uuid
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -19,13 +20,19 @@ from app.core.dependencies import (
 from app.schemas import (
     InventoryBulkMoveRequest,
     InventoryBulkMoveResult,
+    InventoryCategoryCreate,
+    InventoryCategoryPublic,
     InventoryItemAddBarcodeRequest,
     InventoryItemCreate,
+    InventoryItemPagePublic,
     InventoryItemPublic,
     InventoryItemScanRequest,
     InventoryItemUpdate,
+    InventoryImportConfirmResponse,
+    InventoryImportPreviewResponse,
 )
-from app.services import inventory_service
+from app.services import inventory_import_service, inventory_service
+from app.models.inventory_status import InventoryStatus
 
 router = APIRouter(prefix="/items", tags=["inventory"])
 optional_security = HTTPBearer(auto_error=False)
@@ -34,6 +41,46 @@ optional_security = HTTPBearer(auto_error=False)
 @router.get("", response_model=list[InventoryItemPublic])
 def list_items(db: Session = Depends(get_db)) -> list[InventoryItemPublic]:
     return inventory_service.list_items(db)
+
+
+@router.get("/search", response_model=InventoryItemPagePublic)
+def search_items(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=200),
+    q: str | None = Query(None, max_length=200),
+    status_value: InventoryStatus | None = Query(None, alias="status"),
+    category: str | None = Query(None, max_length=100),
+    inventory_type_id: int | None = Query(None, ge=1),
+    location_id: int | None = Query(None, ge=1),
+    responsible_id: int | None = Query(None, ge=1),
+    db: Session = Depends(get_db),
+) -> InventoryItemPagePublic:
+    items, total = inventory_service.search_items(
+        db=db,
+        page=page,
+        page_size=page_size,
+        q=q,
+        status_value=status_value,
+        category=category,
+        inventory_type_id=inventory_type_id,
+        location_id=location_id,
+        responsible_id=responsible_id,
+    )
+    return InventoryItemPagePublic(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/categories", response_model=list[str])
+def list_item_categories(db: Session = Depends(get_db)) -> list[str]:
+    return inventory_service.list_item_categories(db)
+
+
+@router.post("/categories", response_model=InventoryCategoryPublic)
+def create_item_category(
+    payload: InventoryCategoryCreate,
+    _current_user: dict[str, Any] = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+) -> InventoryCategoryPublic:
+    return inventory_service.create_item_category(db=db, name=payload.name)
 
 
 @router.get("/my", response_model=list[InventoryItemPublic])
@@ -60,6 +107,12 @@ async def list_items_by_room(
             f"{settings.location_service_url}/rooms/my/{room_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
+        if response.status_code == status.HTTP_403_FORBIDDEN:
+            # If user isn't assigned to the room, allow system admins to access via admin endpoint.
+            response = await client.get(
+                f"{settings.location_service_url}/rooms/{room_id}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
     if response.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="room_forbidden")
     return inventory_service.list_items_for_location(room_id, db)
@@ -100,6 +153,81 @@ def create_item(
     payload: InventoryItemCreate, db: Session = Depends(get_db)
 ) -> InventoryItemPublic:
     return inventory_service.create_item(payload, db)
+
+
+@router.post("/import/preview", response_model=InventoryImportPreviewResponse)
+async def preview_import_items(
+    file: UploadFile = File(...),
+    _current_user: dict[str, Any] = Depends(require_system_admin),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> InventoryImportPreviewResponse:
+    content = await file.read()
+    rows = inventory_import_service.parse_import_file(filename=file.filename or "", content=content)
+    return await inventory_import_service.build_preview(
+        token=credentials.credentials,
+        rows=rows,
+        db=db,
+    )
+
+
+@router.post(
+    "/import/confirm",
+    response_model=InventoryImportConfirmResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def confirm_import_items(
+    file: UploadFile = File(...),
+    create_missing_locations: bool = Query(default=True),
+    create_missing_users: bool = Query(default=True),
+    _current_user: dict[str, Any] = Depends(require_system_admin),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> InventoryImportConfirmResponse:
+    content = await file.read()
+    rows = inventory_import_service.parse_import_file(filename=file.filename or "", content=content)
+    return await inventory_import_service.confirm_import(
+        token=credentials.credentials,
+        rows=rows,
+        db=db,
+        create_missing_locations=create_missing_locations,
+        create_missing_users=create_missing_users,
+    )
+
+
+@router.post("/import/confirm-stream")
+async def confirm_import_items_stream(
+    request: Request,
+    file: UploadFile = File(...),
+    create_missing_locations: bool = Query(default=True),
+    create_missing_users: bool = Query(default=True),
+    _current_user: dict[str, Any] = Depends(require_system_admin),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    content = await file.read()
+    rows = inventory_import_service.parse_import_file(filename=file.filename or "", content=content)
+
+    async def event_gen():
+        async for chunk in inventory_import_service.confirm_import_stream(
+            token=credentials.credentials,
+            rows=rows,
+            db=db,
+            create_missing_locations=create_missing_locations,
+            create_missing_users=create_missing_users,
+        ):
+            if await request.is_disconnected():
+                break
+            yield chunk
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.post(

@@ -13,6 +13,8 @@ class UserCreate(BaseModel):
     last_name: str | None = Field(default=None, max_length=100)
     department_id: int | None = None
     role: str | None = Field(default=None, max_length=100)
+    iin: str | None = Field(default=None, min_length=12, max_length=12, pattern=r"^\d{12}$")
+    person_id: str | None = Field(default=None, max_length=50)
 
 
 class AdminUserCreate(BaseModel):
@@ -23,6 +25,8 @@ class AdminUserCreate(BaseModel):
     last_name: str | None = Field(default=None, max_length=100)
     department_id: int | None = None
     role: str | None = Field(default=None, max_length=100)
+    iin: str | None = Field(default=None, min_length=12, max_length=12, pattern=r"^\d{12}$")
+    person_id: str | None = Field(default=None, max_length=50)
     role_ids: list[int] = Field(default_factory=list)
     is_active: bool = True
 
@@ -35,6 +39,8 @@ class AdminUserUpdate(BaseModel):
     last_name: str | None = Field(default=None, max_length=100)
     department_id: int | None = None
     role: str | None = Field(default=None, max_length=100)
+    iin: str | None = Field(default=None, min_length=12, max_length=12, pattern=r"^\d{12}$")
+    person_id: str | None = Field(default=None, max_length=50)
     is_active: bool | None = None
     role_ids: list[int] | None = None
 
@@ -47,6 +53,8 @@ class UserPublic(BaseModel):
     last_name: str | None = None
     department_id: int | None = None
     role: str | None = None
+    iin: str | None = None
+    person_id: str | None = None
     is_active: bool
     created_at: datetime | None = None
     roles: list[str] = Field(default_factory=list)
@@ -61,6 +69,8 @@ class UserLookupPublic(BaseModel):
     last_name: str | None = None
     department_id: int | None = None
     role: str | None = None
+    iin: str | None = None
+    person_id: str | None = None
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)

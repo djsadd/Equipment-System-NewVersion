@@ -8,6 +8,8 @@ import { createAuditPlan, listAuditSessions, type AuditSession, type AuditSessio
 
 type RoomStatus = 'done' | 'pending'
 
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50] as const
+
 type InventoryRoomRow = {
   id: number
   name: string
@@ -17,7 +19,7 @@ type InventoryRoomRow = {
 }
 
 const LOCALE_BY_LANG: Record<Lang, string> = {
-  id: 'id-ID',
+  id: 'de-DE',
   ru: 'ru-RU',
   en: 'en-US',
   kk: 'kk-KZ',
@@ -116,7 +118,14 @@ export function InventoryPage() {
   const [filter, setFilter] = useState<RoomStatus>('pending')
   const [finishOpen, setFinishOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const pageSize = 5
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(() => {
+    const raw = localStorage.getItem('inventory_page_size')
+    const parsed = raw ? Number(raw) : NaN
+    if (Number.isFinite(parsed) && PAGE_SIZE_OPTIONS.includes(parsed as (typeof PAGE_SIZE_OPTIONS)[number])) {
+      return parsed as (typeof PAGE_SIZE_OPTIONS)[number]
+    }
+    return PAGE_SIZE_OPTIONS[0]
+  })
   const [rooms, setRooms] = useState<InventoryRoomRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -256,6 +265,43 @@ export function InventoryPage() {
     return rooms.filter((room) => room.status === filter)
   }, [rooms, filter])
 
+  const totalPages = useMemo(() => {
+    const value = Math.ceil(filteredRooms.length / pageSize)
+    return Math.max(1, value)
+  }, [filteredRooms.length, pageSize])
+
+  useEffect(() => {
+    localStorage.setItem('inventory_page_size', String(pageSize))
+  }, [pageSize])
+
+  useEffect(() => {
+    setPage((prev) => Math.min(Math.max(1, prev), totalPages))
+  }, [totalPages])
+
+  const paginationItems = useMemo((): Array<number | null> => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    const pages = new Set<number>([1, totalPages])
+    for (const p of [page - 2, page - 1, page, page + 1, page + 2]) {
+      if (p >= 1 && p <= totalPages) {
+        pages.add(p)
+      }
+    }
+
+    const sorted = Array.from(pages).sort((a, b) => a - b)
+    const result: Array<number | null> = []
+    for (const current of sorted) {
+      const prev = result.length ? result[result.length - 1] : null
+      if (typeof prev === 'number' && current - prev > 1) {
+        result.push(null)
+      }
+      result.push(current)
+    }
+    return result
+  }, [page, totalPages])
+
   return (
     <div className="dashboard">
       <Sidebar
@@ -336,21 +382,71 @@ export function InventoryPage() {
                       ))}
                 </div>
               </div>
-              <div className="inventory__pagination">
-                <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
-                  Назад
+              <div className="inventory__pagination" aria-label="Inventory pagination">
+                <button type="button" onClick={() => setPage(1)} disabled={page <= 1}>
+                  В«
                 </button>
-                <span>Страница {page}</span>
                 <button
                   type="button"
-                  onClick={() =>
-                    setPage((prev) =>
-                      Math.min(Math.max(1, Math.ceil(filteredRooms.length / pageSize)), prev + 1)
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                >
+                  Назад
+                </button>
+
+                <div className="inventory__pagination-pages" aria-label="Страницы">
+                  {paginationItems.map((value, index) => {
+                    if (value === null) {
+                      return (
+                        <span className="inventory__pagination-ellipsis" key={`e-${index}`}>
+                          …
+                        </span>
+                      )
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        key={value}
+                        className={value === page ? 'is-active' : undefined}
+                        onClick={() => setPage(value)}
+                      >
+                        {value}
+                      </button>
                     )
-                  }
+                  })}
+                </div>
+
+                <span>
+                  Страница {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page >= totalPages}
                 >
                   Вперед
                 </button>
+                <button type="button" onClick={() => setPage(totalPages)} disabled={page >= totalPages}>
+                  В»
+                </button>
+
+                <label className="inventory__page-size">
+                  <span>На стр.</span>
+                  <select
+                    value={String(pageSize)}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number])
+                      setPage(1)
+                    }}
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={String(size)}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </section>
           )}

@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, require_system_admin
 from app.schemas.room import RoomCreate, RoomPublic, RoomUpdate
 from app.services import room_service
@@ -29,6 +30,9 @@ def list_my_rooms(
     user_id = current_user.get("id") if isinstance(current_user, dict) else None
     if not isinstance(user_id, int):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
+    roles = current_user.get("roles") if isinstance(current_user, dict) else None
+    if isinstance(roles, list) and settings.system_admin_role in roles:
+        return room_service.list_rooms(db)
     return room_service.list_rooms_for_user(user_id, db)
 
 
@@ -41,6 +45,9 @@ def get_my_room(
     user_id = current_user.get("id") if isinstance(current_user, dict) else None
     if not isinstance(user_id, int):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
+    roles = current_user.get("roles") if isinstance(current_user, dict) else None
+    if isinstance(roles, list) and settings.system_admin_role in roles:
+        return room_service.get_room(room_id, db)
     return room_service.get_room_for_user(room_id, user_id, db)
 
 
