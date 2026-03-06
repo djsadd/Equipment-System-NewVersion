@@ -146,6 +146,8 @@ def login_user(payload: LoginRequest, db: Session) -> TokenPair:
 
 _IIN_RE = re.compile(r"\b\d{12}\b")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_NAME_CHARS_RE = re.compile(r"[A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүІіҺһ]")
+_NAME_SEPARATORS_RE = re.compile(r"[\s]+")
 
 
 def _deep_find_first(info: object, key_candidates: set[str]) -> str | None:
@@ -167,6 +169,41 @@ def _deep_find_first(info: object, key_candidates: set[str]) -> str | None:
                 return found
         return None
     return None
+
+
+def _looks_like_person_name(value: str) -> bool:
+    candidate = value.strip()
+    if not candidate:
+        return False
+    if len(candidate) < 3 or len(candidate) > 255:
+        return False
+    if not _NAME_CHARS_RE.search(candidate):
+        return False
+    # Avoid typical non-person labels.
+    lowered = candidate.lower()
+    for bad in (
+        "кафедра",
+        "факультет",
+        "группа",
+        "специальность",
+        "университет",
+        "академия",
+        "институт",
+        "библиотека",
+        "деканат",
+        "курс",
+        "семестр",
+    ):
+        if bad in lowered:
+            return False
+    return True
+
+
+def _compose_full_name(*, last_name: str | None, first_name: str | None, middle_name: str | None) -> str | None:
+    parts = [p.strip() for p in [last_name, first_name, middle_name] if isinstance(p, str) and p.strip()]
+    if len(parts) < 2:
+        return None
+    return " ".join(parts)
 
 
 def _deep_find_regex(info: object, pattern: re.Pattern[str]) -> str | None:
@@ -201,9 +238,64 @@ def _extract_identity_fields(info: dict) -> dict[str, str | None]:
     if email and not _EMAIL_RE.match(email):
         email = None
 
-    full_name = _deep_find_first(info, {"fullname", "full_name", "fio", "name", "nameru", "name_ru"})
-    first_name = _deep_find_first(info, {"firstname", "first_name", "name1", "givenname", "given_name"})
-    last_name = _deep_find_first(info, {"lastname", "last_name", "surname", "familyname", "family_name"})
+    # Platonus payloads often include many generic "name" fields; avoid them to prevent mismatches.
+    first_name = _deep_find_first(
+        info,
+        {
+            "firstname",
+            "first_name",
+            "givenname",
+            "given_name",
+            "namefirst",
+            "name_first",
+            "imya",
+            "имя",
+        },
+    )
+    last_name = _deep_find_first(
+        info,
+        {
+            "lastname",
+            "last_name",
+            "surname",
+            "familyname",
+            "family_name",
+            "namelast",
+            "name_last",
+            "fam",
+            "фамилия",
+        },
+    )
+    middle_name = _deep_find_first(
+        info,
+        {
+            "middlename",
+            "middle_name",
+            "patronymic",
+            "patronymic_name",
+            "name_middle",
+            "second_name",
+            "отчество",
+        },
+    )
+    full_name = _deep_find_first(info, {"fullname", "full_name", "fio", "фио", "personfio", "person_fio"})
+
+    if full_name and not _looks_like_person_name(full_name):
+        full_name = None
+    if first_name and not _looks_like_person_name(first_name):
+        first_name = None
+    if last_name and not _looks_like_person_name(last_name):
+        last_name = None
+    if middle_name and not _looks_like_person_name(middle_name):
+        middle_name = None
+
+    composed = _compose_full_name(last_name=last_name, first_name=first_name, middle_name=middle_name)
+    if composed:
+        full_name = composed
+
+    if full_name:
+        # Normalize whitespace.
+        full_name = _NAME_SEPARATORS_RE.sub(" ", full_name).strip()
 
     return {
         "iin": iin,
@@ -265,11 +357,11 @@ def login_platonus_user(payload: PlatonusLoginRequest, db: Session) -> TokenPair
         user.role = result.primary_role
         if extracted.get("iin"):
             user.iin = extracted["iin"]
-        if extracted.get("full_name") and not user.full_name:
+        if extracted.get("full_name"):
             user.full_name = extracted["full_name"]
-        if extracted.get("first_name") and not user.first_name:
+        if extracted.get("first_name"):
             user.first_name = extracted["first_name"]
-        if extracted.get("last_name") and not user.last_name:
+        if extracted.get("last_name"):
             user.last_name = extracted["last_name"]
         db.commit()
 

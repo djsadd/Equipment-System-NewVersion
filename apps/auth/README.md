@@ -42,6 +42,7 @@ FastAPI микросервис для аутентификации и автор
 - `PLATONUS_BASE_URL` — базовый URL Platonus (`https://platonus.tau-edu.kz`).
 - `PLATONUS_HEADLESS` — запуск Chromium в headless режиме (`true`).
 - `PLATONUS_TIMEOUT_MS` — таймаут Playwright (мс, `60000`).
+- `PLATONUS_DEBUG` — включить расширенный лог для ошибок Platonus (`false`).
 
 Файл окружения для локального запуска: `apps/auth/.env`.
 
