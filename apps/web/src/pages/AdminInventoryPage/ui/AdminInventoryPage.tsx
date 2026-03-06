@@ -953,6 +953,7 @@ export function AdminInventoryPage() {
                         <span>Кабинет</span>
                         <span>Статус</span>
                         <span>Тип</span>
+                        <span>Категория</span>
                         <span>Ответственный</span>
                         <span className="admin-inventory__chevron" aria-hidden="true" />
                       </div>
@@ -995,6 +996,7 @@ export function AdminInventoryPage() {
                                   ? `Тип #${item.inventory_type_id}`
                                   : '—'}
                             </span>
+                            <span>{item.category || '—'}</span>
                             <span>
                               {responsible
                                 ? getUserDisplayInfo(responsible)

@@ -76,6 +76,9 @@ export function AdminCabinetsPage() {
   const [responsibleSearch, setResponsibleSearch] = useState('')
   const [showUserList, setShowUserList] = useState(false)
   const [cabinetStatus, setCabinetStatus] = useState('Активен')
+  const [cabinetQuery, setCabinetQuery] = useState('')
+  const [cabinetTypeFilter, setCabinetTypeFilter] = useState('')
+  const [cabinetStatusFilter, setCabinetStatusFilter] = useState('')
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
   const handleLogout = () => {
@@ -167,6 +170,47 @@ export function AdminCabinetsPage() {
   const userById = useMemo(() => {
     return new Map(users.map((user) => [user.id, user]))
   }, [users])
+
+  const cabinetTypeOptions = useMemo(() => {
+    const values = new Set<string>()
+    cabinetTypes.forEach((type) => {
+      if (type.name) {
+        values.add(type.name)
+      }
+    })
+    cabinets.forEach((cabinet) => {
+      if (cabinet.room_type) {
+        values.add(cabinet.room_type)
+      }
+    })
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'ru'))
+  }, [cabinetTypes, cabinets])
+
+  const filteredCabinets = useMemo(() => {
+    const query = cabinetQuery.trim().toLowerCase()
+    return cabinets.filter((cabinet) => {
+      if (cabinetTypeFilter && cabinet.room_type !== cabinetTypeFilter) {
+        return false
+      }
+      if (cabinetStatusFilter && (cabinet.status || '') !== cabinetStatusFilter) {
+        return false
+      }
+      if (!query) {
+        return true
+      }
+      const responsible =
+        cabinet.responsible_id && userById.has(cabinet.responsible_id) ? userById.get(cabinet.responsible_id)! : null
+      const parts = [
+        cabinet.name ?? '',
+        cabinet.room_type ?? '',
+        cabinet.status ?? '',
+        cabinet.responsible_id ? String(cabinet.responsible_id) : '',
+        responsible ? getUserLabel(responsible) : '',
+        responsible?.email ?? '',
+      ]
+      return parts.some((value) => value.toLowerCase().includes(query))
+    })
+  }, [cabinets, cabinetQuery, cabinetTypeFilter, cabinetStatusFilter, userById])
 
   const openCabinetEdit = (cabinet: Cabinet) => {
     setActionError(null)
@@ -352,66 +396,144 @@ export function AdminCabinetsPage() {
 
           <section className="cabinet-admin__grid" key={`${activeTab}-grid`}>
             {activeTab === 'cabinets' && (
-              <div className="cabinet-admin__table cabinet-admin__table--cabinets">
-                <div className="cabinet-admin__table-head">
-                  <span>Кабинет</span>
-                  <span>Тип кабинета</span>
-                  <span>Ответственное лицо</span>
-                  <span>Статус</span>
-                </div>
-                {isLoading && (
-                  <div className="cabinet-admin__table-row">
-                    <span>Загрузка...</span>
-                    <span />
-                    <span />
-                    <span />
+              <article className="cabinet-admin__card">
+                <h2>Кабинеты</h2>
+                <p>Поиск по названию кабинета, типу или ответственному. Фильтры применяются мгновенно.</p>
+
+                <div className="cabinet-admin__toolbar" role="search" aria-label="Поиск и фильтры кабинетов">
+                  <div className="cabinet-admin__filters">
+                    <label className="cabinet-admin__filter cabinet-admin__filter--wide">
+                      <span>Поиск</span>
+                      <div className="cabinet-admin__search">
+                        <span className="cabinet-admin__search-icon" aria-hidden="true" />
+                        <input
+                          value={cabinetQuery}
+                          onChange={(event) => setCabinetQuery(event.target.value)}
+                          placeholder="Кабинет, тип, ответственный..."
+                        />
+                        {cabinetQuery.trim() && (
+                          <button
+                            type="button"
+                            className="cabinet-admin__search-clear"
+                            aria-label="Очистить поиск"
+                            onClick={() => setCabinetQuery('')}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    </label>
+
+                    <label className="cabinet-admin__filter cabinet-admin__filter--white">
+                      <span>Тип</span>
+                      <select value={cabinetTypeFilter} onChange={(event) => setCabinetTypeFilter(event.target.value)}>
+                        <option value="">Все</option>
+                        {cabinetTypeOptions.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="cabinet-admin__filter cabinet-admin__filter--white">
+                      <span>Статус</span>
+                      <select value={cabinetStatusFilter} onChange={(event) => setCabinetStatusFilter(event.target.value)}>
+                        <option value="">Все</option>
+                        <option value="Активен">Активен</option>
+                        <option value="Неактивен">Неактивен</option>
+                      </select>
+                    </label>
                   </div>
-                )}
-                {!isLoading && error && (
-                  <div className="cabinet-admin__table-row">
-                    <span>{error}</span>
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                )}
-                {!isLoading && !error && cabinets.length === 0 && (
-                  <div className="cabinet-admin__table-row">
-                    <span>Кабинеты не найдены</span>
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                )}
-                {!isLoading &&
-                  !error &&
-                  cabinets.map((cabinet) => (
-                    <div
-                      className="cabinet-admin__table-row"
-                      key={cabinet.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setModal({ type: 'cabinet-view', item: cabinet })}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          setModal({ type: 'cabinet-view', item: cabinet })
-                        }
+
+                  <div className="cabinet-admin__toolbar-side">
+                    <div className="cabinet-admin__summary">
+                      Показано {filteredCabinets.length} из {cabinets.length}
+                    </div>
+                    <button
+                      type="button"
+                      className="cabinet-admin__reset"
+                      disabled={!cabinetQuery.trim() && !cabinetTypeFilter && !cabinetStatusFilter}
+                      onClick={() => {
+                        setCabinetQuery('')
+                        setCabinetTypeFilter('')
+                        setCabinetStatusFilter('')
                       }}
                     >
-                      <span>{cabinet.name}</span>
-                      <span>{cabinet.room_type}</span>
-                      <span>
-                        {cabinet.responsible_id
-                          ? userById.has(cabinet.responsible_id)
-                            ? getUserDisplayInfo(userById.get(cabinet.responsible_id)!)
-                            : `ID ${cabinet.responsible_id}`
-                          : '—'}
-                      </span>
-                      <span>{cabinet.status || '—'}</span>
+                      Сбросить
+                    </button>
+                  </div>
+                </div>
+
+                <div className="cabinet-admin__table cabinet-admin__table--cabinets">
+                  <div className="cabinet-admin__table-head">
+                    <span>Кабинет</span>
+                    <span>Тип кабинета</span>
+                    <span>Ответственное лицо</span>
+                    <span>Статус</span>
+                  </div>
+                  {isLoading && (
+                    <div className="cabinet-admin__table-row">
+                      <span>Загрузка...</span>
+                      <span />
+                      <span />
+                      <span />
                     </div>
-                  ))}
-              </div>
+                  )}
+                  {!isLoading && error && (
+                    <div className="cabinet-admin__table-row">
+                      <span>{error}</span>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+                  {!isLoading && !error && cabinets.length === 0 && (
+                    <div className="cabinet-admin__table-row">
+                      <span>Кабинеты не найдены</span>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+                  {!isLoading && !error && cabinets.length > 0 && filteredCabinets.length === 0 && (
+                    <div className="cabinet-admin__table-row">
+                      <span>Ничего не найдено. Попробуйте изменить фильтры.</span>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+                  {!isLoading &&
+                    !error &&
+                    filteredCabinets.map((cabinet) => (
+                      <div
+                        className="cabinet-admin__table-row"
+                        key={cabinet.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setModal({ type: 'cabinet-view', item: cabinet })}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            setModal({ type: 'cabinet-view', item: cabinet })
+                          }
+                        }}
+                      >
+                        <span>{cabinet.name}</span>
+                        <span>{cabinet.room_type}</span>
+                        <span>
+                          {cabinet.responsible_id
+                            ? userById.has(cabinet.responsible_id)
+                              ? getUserDisplayInfo(userById.get(cabinet.responsible_id)!)
+                              : `ID ${cabinet.responsible_id}`
+                            : '—'}
+                        </span>
+                        <span>{cabinet.status || '—'}</span>
+                      </div>
+                    ))}
+                </div>
+              </article>
             )}
             {activeTab === 'types' && (
               <article className="cabinet-admin__card">
