@@ -8,6 +8,7 @@ type AdminSection =
   | 'cabinets'
   | 'users'
   | 'inventory'
+  | 'inventory-import'
   | 'departments'
   | 'journal'
   | 'reports'
@@ -33,6 +34,11 @@ const adminModules: { id: AdminSection; title: string; desc: string }[] = [
     id: 'inventory',
     title: 'Инвентарь',
     desc: 'Планы, прогресс, итоги.',
+  },
+  {
+    id: 'inventory-import',
+    title: 'Импорт инвентаря',
+    desc: 'Загрузка инвентаря из CSV/XLSX (предпросмотр и импорт).',
   },
   {
     id: 'journal',
@@ -107,6 +113,9 @@ export function AdminPage() {
                   }
                   if (module.id === 'inventory') {
                     navigate('/admin/inventory')
+                  }
+                  if (module.id === 'inventory-import') {
+                    navigate('/admin/inventory-import')
                   }
                   if (module.id === 'journal') {
                     navigate('/admin/journal')

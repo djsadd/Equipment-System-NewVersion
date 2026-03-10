@@ -20,6 +20,7 @@ import { AdminDepartmentCreatePage } from '@/pages/AdminDepartmentCreatePage/ui/
 import { AdminDepartmentDetailPage } from '@/pages/AdminDepartmentDetailPage/ui/AdminDepartmentDetailPage'
 import { AdminInventoryPage } from '@/pages/AdminInventoryPage/ui/AdminInventoryPage'
 import { AdminInventoryCreatePage } from '@/pages/AdminInventoryCreatePage/ui/AdminInventoryCreatePage'
+import { AdminInventoryImportPage } from '@/pages/AdminInventoryImportPage/ui/AdminInventoryImportPage'
 import { AdminJournalPage } from '@/pages/AdminJournalPage/ui/AdminJournalPage'
 import { AdminJournalDetailPage } from '@/pages/AdminJournalDetailPage/ui/AdminJournalDetailPage'
 import { AdminDocumentsPage } from '@/pages/AdminDocumentsPage/ui/AdminDocumentsPage'
@@ -168,6 +169,14 @@ export function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminInventoryCreatePage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/inventory-import"
+        element={
+          <RequireAdmin>
+            <AdminInventoryImportPage />
           </RequireAdmin>
         }
       />
