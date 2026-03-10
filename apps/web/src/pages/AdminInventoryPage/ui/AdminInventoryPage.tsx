@@ -1462,6 +1462,17 @@ export function AdminInventoryPage() {
                   {printNotice ? <p className="admin__success">{printNotice}</p> : null}
                   <button
                     type="button"
+                    disabled={actionBusy}
+                    onClick={() => {
+                      setActionError(null)
+                      setPrintNotice(null)
+                      setModal({ type: 'item-edit', item: modal.item })
+                    }}
+                  >
+                    Редактировать
+                  </button>
+                  <button
+                    type="button"
                     className="is-primary"
                     disabled={actionBusy}
                     onClick={async () => {
