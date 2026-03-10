@@ -3,6 +3,7 @@ import { fetchWithAuthRetry } from '@/shared/lib/authFetch'
 export type Department = {
   id: number
   name: string
+  department_type?: string | null
   location_id?: number | null
   status?: string | null
   created_at?: string | null
@@ -40,6 +41,7 @@ export function getDepartment(departmentId: number) {
 
 export function createDepartment(payload: {
   name: string
+  department_type?: string | null
   location_id?: number | null
   status?: string | null
 }) {
@@ -52,7 +54,12 @@ export function createDepartment(payload: {
 
 export function updateDepartment(
   departmentId: number,
-  payload: { name?: string | null; location_id?: number | null; status?: string | null }
+  payload: {
+    name?: string | null
+    department_type?: string | null
+    location_id?: number | null
+    status?: string | null
+  }
 ) {
   return requestDepartments<Department>(`/${departmentId}`, {
     method: 'PUT',

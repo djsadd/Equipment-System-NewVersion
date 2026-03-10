@@ -13,6 +13,7 @@ class Department(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
+    department_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     location_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     status: Mapped[str] = mapped_column(
         String(50), server_default=text("'Активен'"), nullable=False

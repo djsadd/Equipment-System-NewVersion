@@ -149,6 +149,7 @@ export function AdminDepartmentDetailPage() {
                   title="Данные департамента"
                   initial={{
                     name: department.name,
+                    department_type: department.department_type ?? '',
                     location_id: department.location_id ?? null,
                     status: department.status ?? 'Активен',
                   }}

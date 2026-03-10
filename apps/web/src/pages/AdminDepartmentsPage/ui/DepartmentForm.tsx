@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 export type DepartmentFormPayload = {
   name: string
+  department_type?: string | null
   location_id?: number | null
   status?: string | null
 }
@@ -32,6 +33,7 @@ export function DepartmentForm({
   locationsError,
 }: DepartmentFormProps) {
   const [name, setName] = useState(initial?.name ?? '')
+  const [departmentType, setDepartmentType] = useState(initial?.department_type ?? '')
   const [locationId, setLocationId] = useState(
     initial?.location_id ? String(initial.location_id) : ''
   )
@@ -45,6 +47,7 @@ export function DepartmentForm({
     }
     onSubmit({
       name: trimmedName,
+      department_type: departmentType.trim() ? departmentType.trim() : null,
       location_id: locationId ? Number(locationId) : null,
       status: status || null,
     })
@@ -56,6 +59,10 @@ export function DepartmentForm({
       <label>
         Название
         <input value={name} onChange={(event) => setName(event.target.value)} required />
+      </label>
+      <label>
+        Тип отдела
+        <input value={departmentType} onChange={(event) => setDepartmentType(event.target.value)} />
       </label>
       <label>
         Локация

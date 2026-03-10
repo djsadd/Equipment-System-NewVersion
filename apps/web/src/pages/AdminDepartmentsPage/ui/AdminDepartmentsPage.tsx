@@ -144,6 +144,7 @@ export function AdminDepartmentsPage() {
             <article className="admin__card">
               <div className="admin__table-head">
                 <span>Департамент</span>
+                <span>Тип отдела</span>
                 <span>Локация</span>
                 <span>Статус</span>
                 <span>Действия</span>
@@ -177,6 +178,9 @@ export function AdminDepartmentsPage() {
                         <div className="admin__row-info">
                           <div className="admin__row-title">{department.name}</div>
                           <div className="admin__row-sub">ID: {department.id}</div>
+                        </div>
+                        <div className="admin__row-info">
+                          <div className="admin__row-title">{department.department_type ?? '—'}</div>
                         </div>
                         <div className="admin__row-info">
                           <div className="admin__row-title">

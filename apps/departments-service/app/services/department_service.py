@@ -34,6 +34,7 @@ def require_department(department_id: int, db: Session) -> Department:
 def create_department(payload: DepartmentCreate, db: Session) -> DepartmentPublic:
     department = Department(
         name=payload.name,
+        department_type=payload.department_type,
         location_id=payload.location_id,
         status=payload.status or "Активен",
     )
