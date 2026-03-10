@@ -6,8 +6,10 @@ import { clearTokens } from '@/shared/lib/authStorage'
 import {
   deleteDepartment,
   getDepartment,
+  listDepartmentTypes,
   updateDepartment,
   type Department,
+  type DepartmentType,
 } from '@/shared/api/departments'
 import { DepartmentForm, type DepartmentFormPayload } from '@/pages/AdminDepartmentsPage/ui/DepartmentForm'
 
@@ -24,6 +26,9 @@ export function AdminDepartmentDetailPage() {
   const [department, setDepartment] = useState<Department | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [departmentTypes, setDepartmentTypes] = useState<DepartmentType[]>([])
+  const [departmentTypesLoading, setDepartmentTypesLoading] = useState(true)
+  const [departmentTypesError, setDepartmentTypesError] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -66,6 +71,34 @@ export function AdminDepartmentDetailPage() {
       active = false
     }
   }, [departmentId])
+
+  useEffect(() => {
+    let active = true
+    setDepartmentTypesLoading(true)
+    setDepartmentTypesError(null)
+    listDepartmentTypes()
+      .then((data) => {
+        if (!active) {
+          return
+        }
+        setDepartmentTypes(data)
+      })
+      .catch((err) => {
+        if (!active) {
+          return
+        }
+        setDepartmentTypesError(err instanceof Error ? err.message : 'Не удалось загрузить типы отделов')
+      })
+      .finally(() => {
+        if (active) {
+          setDepartmentTypesLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleSubmit = async (payload: DepartmentFormPayload) => {
     if (!department) {
@@ -149,7 +182,7 @@ export function AdminDepartmentDetailPage() {
                   title="Данные департамента"
                   initial={{
                     name: department.name,
-                    department_type: department.department_type ?? '',
+                    department_type_id: department.department_type_id ?? null,
                     location_id: department.location_id ?? null,
                     status: department.status ?? 'Активен',
                   }}
@@ -157,6 +190,9 @@ export function AdminDepartmentDetailPage() {
                   busy={actionBusy}
                   error={actionError}
                   submitLabel="Сохранить изменения"
+                  departmentTypes={departmentTypes}
+                  departmentTypesLoading={departmentTypesLoading}
+                  departmentTypesError={departmentTypesError}
                 />
               ) : null}
             </article>

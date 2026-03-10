@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 export type DepartmentFormPayload = {
   name: string
-  department_type?: string | null
+  department_type_id?: number | null
   location_id?: number | null
   status?: string | null
 }
@@ -15,6 +15,9 @@ type DepartmentFormProps = {
   error?: string | null
   submitLabel?: string
   title?: string
+  departmentTypes?: { id: number; name: string; status?: string | null }[]
+  departmentTypesLoading?: boolean
+  departmentTypesError?: string | null
   locations?: { id: number; name: string }[]
   locationsLoading?: boolean
   locationsError?: string | null
@@ -28,12 +31,17 @@ export function DepartmentForm({
   error,
   submitLabel = 'Сохранить',
   title = 'Департамент',
+  departmentTypes,
+  departmentTypesLoading,
+  departmentTypesError,
   locations,
   locationsLoading,
   locationsError,
 }: DepartmentFormProps) {
   const [name, setName] = useState(initial?.name ?? '')
-  const [departmentType, setDepartmentType] = useState(initial?.department_type ?? '')
+  const [departmentTypeId, setDepartmentTypeId] = useState(
+    typeof initial?.department_type_id === 'number' ? String(initial.department_type_id) : ''
+  )
   const [locationId, setLocationId] = useState(
     initial?.location_id ? String(initial.location_id) : ''
   )
@@ -47,7 +55,7 @@ export function DepartmentForm({
     }
     onSubmit({
       name: trimmedName,
-      department_type: departmentType.trim() ? departmentType.trim() : null,
+      department_type_id: departmentTypeId ? Number(departmentTypeId) : null,
       location_id: locationId ? Number(locationId) : null,
       status: status || null,
     })
@@ -62,8 +70,30 @@ export function DepartmentForm({
       </label>
       <label>
         Тип отдела
-        <input value={departmentType} onChange={(event) => setDepartmentType(event.target.value)} />
+        {departmentTypes ? (
+          <select
+            value={departmentTypeId}
+            onChange={(event) => setDepartmentTypeId(event.target.value)}
+            disabled={departmentTypesLoading}
+          >
+            <option value="">Не выбран</option>
+            {departmentTypes.map((item) => (
+              <option key={item.id} value={String(item.id)}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            value={departmentTypeId}
+            onChange={(event) => setDepartmentTypeId(event.target.value)}
+            inputMode="numeric"
+            placeholder="ID типа"
+          />
+        )}
       </label>
+      {departmentTypesLoading ? <p className="admin__error">Загрузка типов...</p> : null}
+      {departmentTypesError ? <p className="admin__error">{departmentTypesError}</p> : null}
       <label>
         Локация
         {locations ? (

@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Department
+from app.models import Department, DepartmentType
 from app.schemas.department import DepartmentCreate, DepartmentPublic, DepartmentUpdate
 
 
@@ -32,9 +32,15 @@ def require_department(department_id: int, db: Session) -> Department:
 
 
 def create_department(payload: DepartmentCreate, db: Session) -> DepartmentPublic:
+    if payload.department_type_id is not None:
+        department_type = db.get(DepartmentType, payload.department_type_id)
+        if not department_type:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="department_type_not_found"
+            )
     department = Department(
         name=payload.name,
-        department_type=payload.department_type,
+        department_type_id=payload.department_type_id,
         location_id=payload.location_id,
         status=payload.status or "Активен",
     )
@@ -49,6 +55,13 @@ def update_department(
 ) -> DepartmentPublic:
     department = require_department(department_id, db)
     data = payload.model_dump(exclude_unset=True)
+
+    if "department_type_id" in data and data["department_type_id"] is not None:
+        department_type = db.get(DepartmentType, data["department_type_id"])
+        if not department_type:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="department_type_not_found"
+            )
     for field, value in data.items():
         setattr(department, field, value)
     db.commit()

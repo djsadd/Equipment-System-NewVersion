@@ -3,24 +3,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func, text
+from sqlalchemy import DateTime, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 
 if TYPE_CHECKING:
-    from app.models.department_type import DepartmentType
+    from app.models.department import Department
 
 
-class Department(Base):
-    __tablename__ = "departments"
+class DepartmentType(Base):
+    __tablename__ = "department_types"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), index=True)
-    department_type_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("department_types.id"), index=True, nullable=True
-    )
-    location_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     status: Mapped[str] = mapped_column(
         String(50), server_default=text("'Активен'"), nullable=False
     )
@@ -31,4 +27,5 @@ class Department(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    department_type: Mapped[DepartmentType | None] = relationship(back_populates="departments")
+    departments: Mapped[list[Department]] = relationship(back_populates="department_type")
+

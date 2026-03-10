@@ -3,9 +3,18 @@ import { fetchWithAuthRetry } from '@/shared/lib/authFetch'
 export type Department = {
   id: number
   name: string
-  department_type?: string | null
+  department_type_id?: number | null
   location_id?: number | null
   status?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export type DepartmentType = {
+  id: number
+  name: string
+  status?: string | null
+  count?: number
   created_at?: string | null
   updated_at?: string | null
 }
@@ -41,7 +50,7 @@ export function getDepartment(departmentId: number) {
 
 export function createDepartment(payload: {
   name: string
-  department_type?: string | null
+  department_type_id?: number | null
   location_id?: number | null
   status?: string | null
 }) {
@@ -56,7 +65,7 @@ export function updateDepartment(
   departmentId: number,
   payload: {
     name?: string | null
-    department_type?: string | null
+    department_type_id?: number | null
     location_id?: number | null
     status?: string | null
   }
@@ -70,6 +79,24 @@ export function updateDepartment(
 
 export function deleteDepartment(departmentId: number) {
   return requestDepartments<{ status: string }>(`/${departmentId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function listDepartmentTypes() {
+  return requestDepartments<DepartmentType[]>('/types')
+}
+
+export function createDepartmentType(payload: { name: string; status?: string | null }) {
+  return requestDepartments<DepartmentType>('/types', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteDepartmentType(typeId: number) {
+  return requestDepartments<{ status: string }>(`/types/${typeId}`, {
     method: 'DELETE',
   })
 }

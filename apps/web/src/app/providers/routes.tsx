@@ -18,6 +18,7 @@ import { AdminUsersPage } from '@/pages/AdminUsersPage/ui/AdminUsersPage'
 import { AdminDepartmentsPage } from '@/pages/AdminDepartmentsPage/ui/AdminDepartmentsPage'
 import { AdminDepartmentCreatePage } from '@/pages/AdminDepartmentCreatePage/ui/AdminDepartmentCreatePage'
 import { AdminDepartmentDetailPage } from '@/pages/AdminDepartmentDetailPage/ui/AdminDepartmentDetailPage'
+import { AdminDepartmentTypesPage } from '@/pages/AdminDepartmentTypesPage/ui/AdminDepartmentTypesPage'
 import { AdminInventoryPage } from '@/pages/AdminInventoryPage/ui/AdminInventoryPage'
 import { AdminInventoryCreatePage } from '@/pages/AdminInventoryCreatePage/ui/AdminInventoryCreatePage'
 import { AdminInventoryImportPage } from '@/pages/AdminInventoryImportPage/ui/AdminInventoryImportPage'
@@ -137,6 +138,14 @@ export function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminDepartmentsPage />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/departments/types"
+        element={
+          <RequireAdmin>
+            <AdminDepartmentTypesPage />
           </RequireAdmin>
         }
       />

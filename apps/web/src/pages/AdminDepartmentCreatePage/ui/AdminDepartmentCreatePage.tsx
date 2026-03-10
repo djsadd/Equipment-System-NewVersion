@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
-import { createDepartment } from '@/shared/api/departments'
+import { createDepartment, listDepartmentTypes, type DepartmentType } from '@/shared/api/departments'
 import { DepartmentForm, type DepartmentFormPayload } from '@/pages/AdminDepartmentsPage/ui/DepartmentForm'
 import { listCabinets, type Cabinet } from '@/shared/api/cabinets'
 
@@ -20,6 +20,9 @@ export function AdminDepartmentCreatePage() {
   const [locations, setLocations] = useState<Cabinet[]>([])
   const [locationsLoading, setLocationsLoading] = useState(true)
   const [locationsError, setLocationsError] = useState<string | null>(null)
+  const [departmentTypes, setDepartmentTypes] = useState<DepartmentType[]>([])
+  const [departmentTypesLoading, setDepartmentTypesLoading] = useState(true)
+  const [departmentTypesError, setDepartmentTypesError] = useState<string | null>(null)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
 
@@ -48,6 +51,34 @@ export function AdminDepartmentCreatePage() {
       .finally(() => {
         if (active) {
           setLocationsLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    setDepartmentTypesLoading(true)
+    setDepartmentTypesError(null)
+    listDepartmentTypes()
+      .then((data) => {
+        if (!active) {
+          return
+        }
+        setDepartmentTypes(data)
+      })
+      .catch((err) => {
+        if (!active) {
+          return
+        }
+        setDepartmentTypesError(err instanceof Error ? err.message : 'Не удалось загрузить типы отделов')
+      })
+      .finally(() => {
+        if (active) {
+          setDepartmentTypesLoading(false)
         }
       })
 
@@ -118,6 +149,9 @@ export function AdminDepartmentCreatePage() {
                 locations={locations}
                 locationsLoading={locationsLoading}
                 locationsError={locationsError}
+                departmentTypes={departmentTypes}
+                departmentTypesLoading={departmentTypesLoading}
+                departmentTypesError={departmentTypesError}
               />
             </article>
           </section>

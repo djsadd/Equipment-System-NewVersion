@@ -7,14 +7,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class DepartmentCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    department_type: str | None = Field(default=None, max_length=100)
+    department_type_id: int | None = None
     location_id: int | None = None
     status: str | None = Field(default=None, max_length=50)
 
 
 class DepartmentUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
-    department_type: str | None = Field(default=None, max_length=100)
+    department_type_id: int | None = None
     location_id: int | None = None
     status: str | None = Field(default=None, max_length=50)
 
@@ -22,7 +22,7 @@ class DepartmentUpdate(BaseModel):
 class DepartmentPublic(BaseModel):
     id: int
     name: str
-    department_type: str | None = None
+    department_type_id: int | None = None
     location_id: int | None = None
     status: str | None = None
     created_at: datetime | None = None

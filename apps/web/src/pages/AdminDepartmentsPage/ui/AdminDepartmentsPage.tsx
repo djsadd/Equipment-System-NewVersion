@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Sidebar } from '@/widgets/Sidebar/ui/Sidebar'
 import { dashboardCopy, type Lang } from '@/shared/config/dashboardCopy'
 import { clearTokens } from '@/shared/lib/authStorage'
-import { listDepartments, type Department } from '@/shared/api/departments'
+import { listDepartments, listDepartmentTypes, type Department, type DepartmentType } from '@/shared/api/departments'
 import { listCabinets, type Cabinet } from '@/shared/api/cabinets'
 
 export function AdminDepartmentsPage() {
@@ -17,6 +17,9 @@ export function AdminDepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [departmentTypes, setDepartmentTypes] = useState<DepartmentType[]>([])
+  const [departmentTypesLoading, setDepartmentTypesLoading] = useState(true)
+  const [departmentTypesError, setDepartmentTypesError] = useState<string | null>(null)
   const [locations, setLocations] = useState<Cabinet[]>([])
   const [locationsLoading, setLocationsLoading] = useState(true)
   const [locationsError, setLocationsError] = useState<string | null>(null)
@@ -61,6 +64,34 @@ export function AdminDepartmentsPage() {
 
   useEffect(() => {
     let active = true
+    setDepartmentTypesLoading(true)
+    setDepartmentTypesError(null)
+    listDepartmentTypes()
+      .then((data) => {
+        if (!active) {
+          return
+        }
+        setDepartmentTypes(data)
+      })
+      .catch((err) => {
+        if (!active) {
+          return
+        }
+        setDepartmentTypesError(err instanceof Error ? err.message : 'Не удалось загрузить типы отделов')
+      })
+      .finally(() => {
+        if (active) {
+          setDepartmentTypesLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
     setLocationsLoading(true)
     setLocationsError(null)
     listCabinets()
@@ -92,6 +123,9 @@ export function AdminDepartmentsPage() {
   const locationsById = useMemo(() => {
     return new Map(locations.map((item) => [item.id, item]))
   }, [locations])
+  const departmentTypesById = useMemo(() => {
+    return new Map(departmentTypes.map((item) => [item.id, item]))
+  }, [departmentTypes])
 
   return (
     <div className="dashboard">
@@ -119,6 +153,9 @@ export function AdminDepartmentsPage() {
               <p>Создавайте отделы, привязывайте их к локациям и следите за статусами.</p>
             </div>
             <div className="admin__actions">
+              <button type="button" onClick={() => navigate('/admin/departments/types')}>
+                Типы отделов
+              </button>
               <button type="button" className="is-primary" onClick={() => navigate('/admin/departments/create')}>
                 Добавить департамент
               </button>
@@ -180,7 +217,18 @@ export function AdminDepartmentsPage() {
                           <div className="admin__row-sub">ID: {department.id}</div>
                         </div>
                         <div className="admin__row-info">
-                          <div className="admin__row-title">{department.department_type ?? '—'}</div>
+                          <div className="admin__row-title">
+                            {typeof department.department_type_id === 'number'
+                              ? departmentTypesById.get(department.department_type_id)?.name ??
+                                `Тип #${department.department_type_id}`
+                              : '—'}
+                          </div>
+                          {departmentTypesLoading ? (
+                            <div className="admin__row-sub">Загрузка типов...</div>
+                          ) : null}
+                          {departmentTypesError ? (
+                            <div className="admin__row-sub">{departmentTypesError}</div>
+                          ) : null}
                         </div>
                         <div className="admin__row-info">
                           <div className="admin__row-title">
