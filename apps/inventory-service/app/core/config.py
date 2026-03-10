@@ -18,6 +18,9 @@ class Settings:
         self.operations_service_url = os.getenv(
             "OPERATIONS_SERVICE_URL", "http://operations:8000"
         )
+        self.documents_service_url = os.getenv(
+            "DOCUMENTS_SERVICE_URL", "http://documents:8000"
+        )
         self.system_admin_role = os.getenv("SYSTEM_ADMIN_ROLE", "system_admin")
         self.inventory_auditor_role = os.getenv("INVENTORY_AUDITOR_ROLE", "inventory_auditor")
 

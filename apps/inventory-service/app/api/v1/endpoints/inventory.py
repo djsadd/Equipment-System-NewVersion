@@ -7,6 +7,7 @@ import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -32,6 +33,7 @@ from app.schemas import (
     InventoryImportPreviewResponse,
 )
 from app.services import inventory_import_service, inventory_service
+from app.models.inventory_item import InventoryItem
 from app.models.inventory_status import InventoryStatus
 
 router = APIRouter(prefix="/items", tags=["inventory"])
@@ -329,6 +331,66 @@ def bulk_move_items(
     responsible_id_is_set = "responsible_id" in patch
     responsible_id = patch.get("responsible_id") if responsible_id_is_set else None
 
+    generated_document_id: int | None = None
+    generated_document_number: str | None = None
+    if payload.generate_document:
+        if not (isinstance(responsible_id, int) and responsible_id > 0):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="to_responsible_required_for_document",
+            )
+
+        unique_ids: list[int] = []
+        seen: set[int] = set()
+        for item_id in payload.item_ids:
+            if item_id in seen:
+                continue
+            seen.add(item_id)
+            unique_ids.append(item_id)
+
+        existing_ids = (
+            db.execute(select(InventoryItem.id).where(InventoryItem.id.in_(unique_ids)))
+            .scalars()
+            .all()
+        )
+
+        if existing_ids and len(existing_ids) == len(unique_ids):
+            # Generate the document BEFORE moving, so it captures the current "from" responsible/location.
+            try:
+                with httpx.Client(timeout=10) as client:
+                    response = client.post(
+                        f"{settings.documents_service_url}/v1/documents/generate-batch",
+                        headers={"Authorization": f"Bearer {token}"},
+                        json={
+                            "type_code": "TRANSFER_ACT",
+                            "target_type": "equipment",
+                            "target_ids": existing_ids,
+                            "to_room_id": payload.location_id,
+                            "to_responsible_id": responsible_id,
+                            "include_pdf": True,
+                        },
+                    )
+                if response.status_code != status.HTTP_200_OK:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="documents_service_error",
+                    )
+                data = response.json()
+                if isinstance(data, dict):
+                    doc_id = data.get("id")
+                    doc_number = data.get("doc_number")
+                    if isinstance(doc_id, int):
+                        generated_document_id = doc_id
+                    if isinstance(doc_number, str):
+                        generated_document_number = doc_number
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="documents_service_unavailable",
+                )
+
     items, missing_ids, previous_by_id = inventory_service.bulk_move_items(
         payload.item_ids,
         location_id=payload.location_id,
@@ -376,6 +438,8 @@ def bulk_move_items(
         moved_count=len(items),
         moved_item_ids=[item.id for item in items],
         not_found_item_ids=missing_ids,
+        generated_document_id=generated_document_id,
+        generated_document_number=generated_document_number,
     )
 
 

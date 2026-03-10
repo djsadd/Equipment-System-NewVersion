@@ -23,6 +23,7 @@ import { printLabel } from '@/shared/api/print'
 import { INVENTORY_STATUS_VALUES, getInventoryStatusLabel } from '@/shared/lib/inventoryStatus'
 import { listAdminUsers, type AdminUser } from '@/shared/api/admin'
 import { listCabinets, type Cabinet } from '@/shared/api/cabinets'
+import { downloadGeneratedDocumentFile } from '@/shared/api/documents'
 import { InventoryItemForm, type InventoryItemFormPayload } from './InventoryItemForm'
 
 type AdminTab = 'items' | 'types' | 'categories' | 'move'
@@ -35,6 +36,17 @@ type ModalState =
   | { type: 'category-create' }
   | { type: 'move-bulk' }
   | null
+
+function saveBlob(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
 
 export function AdminInventoryPage() {
   const [lang, setLang] = useState<Lang>(() => {
@@ -73,6 +85,7 @@ export function AdminInventoryPage() {
   const [bulkMoveResponsibleId, setBulkMoveResponsibleId] = useState('')
   const [bulkMoveResponsibleSearch, setBulkMoveResponsibleSearch] = useState('')
   const [showBulkMoveResponsibleList, setShowBulkMoveResponsibleList] = useState(false)
+  const [bulkMoveGenerateDocument, setBulkMoveGenerateDocument] = useState(false)
   const [itemsStatus, setItemsStatus] = useState('')
   const [itemsCategory, setItemsCategory] = useState('')
   const [itemsCategorySearch, setItemsCategorySearch] = useState('')
@@ -93,6 +106,10 @@ export function AdminInventoryPage() {
   const [categoriesPage, setCategoriesPage] = useState(1)
   const [categoriesPageSize, setCategoriesPageSize] = useState(25)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [moveGeneratedDocument, setMoveGeneratedDocument] = useState<{
+    id: number
+    doc_number: string
+  } | null>(null)
   const navigate = useNavigate()
   const t = useMemo(() => dashboardCopy[lang], [lang])
   const printerHost =
@@ -484,6 +501,7 @@ export function AdminInventoryPage() {
     setBulkMoveResponsibleId('')
     setBulkMoveResponsibleSearch('')
     setShowBulkMoveResponsibleList(false)
+    setBulkMoveGenerateDocument(false)
   }
 
   const openBulkMoveModal = () => {
@@ -518,11 +536,13 @@ export function AdminInventoryPage() {
     setActionBusy(true)
     setActionError(null)
     setMoveSuccess(null)
+    setMoveGeneratedDocument(null)
     try {
       const result = await bulkMoveInventoryItems({
         item_ids: selectedMoveItemIds,
         location_id: locationId,
         ...responsiblePatch,
+        generate_document: bulkMoveGenerateDocument,
       })
 
       await listInventoryItemCategories().then(setCategories).catch(() => null)
@@ -535,13 +555,37 @@ export function AdminInventoryPage() {
       if (result.not_found_item_ids.length > 0) {
         setActionError(`Часть позиций не найдена: ${result.not_found_item_ids[0]}`)
       } else {
-        setMoveSuccess(`Перемещено: ${result.moved_count}`)
+        if (
+          typeof result.generated_document_id === 'number' &&
+          typeof result.generated_document_number === 'string'
+        ) {
+          setMoveGeneratedDocument({
+            id: result.generated_document_id,
+            doc_number: result.generated_document_number,
+          })
+          setMoveSuccess(
+            `Перемещено: ${result.moved_count}. Документ: ${result.generated_document_number}`
+          )
+        } else {
+          setMoveSuccess(`Перемещено: ${result.moved_count}`)
+        }
       }
 
       setSelectedMoveItemIds([])
       setModal(null)
     } finally {
       setActionBusy(false)
+    }
+  }
+
+  const downloadMoveDocument = async (format: 'docx' | 'pdf') => {
+    if (!moveGeneratedDocument) return
+    setActionError(null)
+    try {
+      const blob = await downloadGeneratedDocumentFile(moveGeneratedDocument.id, format)
+      saveBlob(`${moveGeneratedDocument.doc_number}.${format}`, blob)
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Ошибка скачивания')
     }
   }
 
@@ -1293,6 +1337,24 @@ export function AdminInventoryPage() {
                 {usersError ? <p className="admin__error">{usersError}</p> : null}
                 {actionError ? <p className="admin__error">{actionError}</p> : null}
                 {moveSuccess ? <p>{moveSuccess}</p> : null}
+                {moveGeneratedDocument ? (
+                  <div className="inventory__actions">
+                    <button
+                      type="button"
+                      onClick={() => void downloadMoveDocument('pdf')}
+                      disabled={actionBusy}
+                    >
+                      Скачать PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void downloadMoveDocument('docx')}
+                      disabled={actionBusy}
+                    >
+                      Скачать DOCX
+                    </button>
+                  </div>
+                ) : null}
 
                 <div className="inventory__table-card inventory-move__table-card">
                   <div className="inventory-move__table-head">
@@ -1652,6 +1714,15 @@ export function AdminInventoryPage() {
                       <div className="inventory-user-picker__value">Выбрано: ID {bulkMoveResponsibleId}</div>
                     )}
                   </div>
+                </label>
+
+                <label className="inventory-move__check">
+                  <input
+                    type="checkbox"
+                    checked={bulkMoveGenerateDocument}
+                    onChange={(event) => setBulkMoveGenerateDocument(event.target.checked)}
+                  />
+                  <span>Сформировать акт приёма-передачи</span>
                 </label>
 
                 {actionError ? <p className="admin__error">{actionError}</p> : null}

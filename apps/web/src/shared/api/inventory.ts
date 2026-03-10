@@ -104,6 +104,8 @@ export type InventoryBulkMoveResult = {
   moved_count: number
   moved_item_ids: number[]
   not_found_item_ids: number[]
+  generated_document_id?: number | null
+  generated_document_number?: string | null
 }
 
 const INVENTORY_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
@@ -298,6 +300,7 @@ export function bulkMoveInventoryItems(payload: {
   item_ids: number[]
   location_id: number
   responsible_id?: number | null
+  generate_document?: boolean
 }) {
   return requestInventory<InventoryBulkMoveResult>('/items/bulk-move', {
     method: 'POST',
