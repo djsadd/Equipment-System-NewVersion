@@ -12,6 +12,7 @@ def convert_docx_to_pdf_bytes(*, docx_bytes: bytes, soffice_bin: str) -> bytes:
         tmpdir = Path(tmp)
         docx_path = tmpdir / "document.docx"
         pdf_path = tmpdir / "document.pdf"
+        lo_profile = tmpdir / "lo_profile"
         docx_path.write_bytes(docx_bytes)
 
         cmd = [
@@ -19,6 +20,7 @@ def convert_docx_to_pdf_bytes(*, docx_bytes: bytes, soffice_bin: str) -> bytes:
             "--headless",
             "--nologo",
             "--nofirststartwizard",
+            f"-env:UserInstallation=file://{lo_profile.as_posix()}",
             "--convert-to",
             "pdf",
             "--outdir",
@@ -60,4 +62,3 @@ def convert_docx_to_pdf_bytes(*, docx_bytes: bytes, soffice_bin: str) -> bytes:
             )
 
         return pdf_path.read_bytes()
-

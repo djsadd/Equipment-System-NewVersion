@@ -6,6 +6,8 @@ from docxtpl import DocxTemplate
 from docx import Document
 from docx.oxml.ns import qn
 
+from app.core.config import settings
+
 
 def _set_run_font(run, font_name: str) -> None:
     run.font.name = font_name
@@ -63,11 +65,11 @@ def render_docx(*, template_docx: bytes, context: dict) -> bytes:
     doc.save(out)
     rendered = out.getvalue()
 
-    # Force Times New Roman for generated documents.
+    # Force a consistent font for generated documents (DOCX and later PDF conversion).
     # Note: PDF rendering still depends on the font being available in the renderer container.
     rendered_io = BytesIO(rendered)
     document = Document(rendered_io)
-    _normalize_fonts(document, "Times New Roman")
+    _normalize_fonts(document, settings.document_font_name)
     normalized_out = BytesIO()
     document.save(normalized_out)
     return normalized_out.getvalue()

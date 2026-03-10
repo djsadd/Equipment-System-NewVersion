@@ -30,8 +30,9 @@ class Settings:
         )
         self.documents_viewer_role = os.getenv("DOCUMENTS_VIEWER_ROLE", "documents_viewer")
 
+        self.document_font_name = os.getenv("DOCUMENT_FONT_NAME", "Times New Roman")
+
         self.libreoffice_bin = os.getenv("LIBREOFFICE_BIN", "soffice")
 
 
 settings = Settings()
-

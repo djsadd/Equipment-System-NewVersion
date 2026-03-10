@@ -46,4 +46,11 @@ Open `http://localhost:8080`.
 - Gateway is available at `http://localhost:8000` (or via `http://localhost:8080/api/` in prod)
 - Configure upstreams via `GATEWAY_ROUTES` in `docker-compose.yml` (JSON array)
 - Internal service-to-service notification publishing uses `NOTIFICATION_INTERNAL_TOKEN` (see `.env`)
+
+## Documents PDF fonts
+
+`documents-service` generates PDF via headless LibreOffice inside Docker. If the container does not have `Times New Roman` installed, LibreOffice will substitute another font even if the DOCX requests it.
+
+- Configure the requested font with `DOCUMENT_FONT_NAME` (default: `Times New Roman`).
+- If you need true `Times New Roman` in PDFs, mount/install the TTF fonts into the `documents` container (the image now refreshes font cache on startup; default mount dir: `/usr/local/share/fonts/custom`).
 # Equipment-System-NewVersion
