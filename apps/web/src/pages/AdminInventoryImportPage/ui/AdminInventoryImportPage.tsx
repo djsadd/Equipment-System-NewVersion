@@ -254,6 +254,12 @@ export function AdminInventoryImportPage() {
 
               {preview ? (
                 <div className="admin__table">
+                  {preview.total_rows > 0 && preview.to_create_count === 0 ? (
+                    <p className="admin__hint admin__hint--error">
+                      Нечего импортировать: все строки помечены как ошибки. Часто причина — не распознаны заголовки или
+                      пустое поле <strong>title</strong> (поддерживаются также “Наименование/Название”).
+                    </p>
+                  ) : null}
                   {preview.rows.slice(0, 50).map((row) => (
                     <div key={`${row.row_number}-${row.action}`} className="admin__row">
                       <div className="admin__row-info">

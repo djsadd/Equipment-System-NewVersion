@@ -32,26 +32,58 @@ _HEADER_ALIASES: dict[str, str] = {
     "id": "id",
     "title": "title",
     "name": "title",
+    "item": "title",
+    "item_name": "title",
+    "equipment": "title",
+    "equipment_name": "title",
+    "inventory": "title",
+    "inventory_name": "title",
+    # RU / KZ common headers
+    "наименование": "title",
+    "название": "title",
+    "имя": "title",
+    "предмет": "title",
+    "оборудование": "title",
+    "инвентарь": "title",
     "description": "description",
     "descriptiom": "description",
     "desc": "description",
+    "описание": "description",
+    "примечание": "description",
     "category": "category",
+    "категория": "category",
     "location": "location",
     "location_id": "location_id",
     "room": "location",
     "room_id": "location_id",
+    "кабинет": "location",
+    "кабинет_id": "location_id",
+    "аудитория": "location",
+    "помещение": "location",
+    "комната": "location",
     "responsible_username": "responsible_username",
     "responsible_email": "responsible_username",
+    "email": "responsible_username",
+    "e_mail": "responsible_username",
+    "почта": "responsible_username",
+    "эл_почта": "responsible_username",
+    "элпочта": "responsible_username",
+    "ответственный_email": "responsible_username",
     "reponsible_username": "responsible_username",
     "reponsible": "responsible_username",
     "reponsible_username_email": "responsible_username",
     "responsible_first_name": "responsible_first_name",
     "responsible_last_name": "responsible_last_name",
+    "имя_ответственного": "responsible_first_name",
+    "фамилия_ответственного": "responsible_last_name",
     "status": "status",
+    "статус": "status",
     "barcode_id": "barcode_id",
     "barcode_data_12": "barcode_data_12",
     "barcode_value": "barcode_data_12",
     "barcode": "barcode_data_12",
+    "штрихкод": "barcode_data_12",
+    "barcode_data": "barcode_data_12",
 }
 
 
@@ -61,7 +93,8 @@ def _normalize_header(raw: object) -> str:
     value = str(raw).strip().lower()
     value = value.replace("\ufeff", "")
     value = re.sub(r"[\s\-]+", "_", value)
-    value = re.sub(r"[^a-z0-9_]", "", value)
+    # Keep unicode letters/digits (Cyrillic headers, etc.).
+    value = re.sub(r"[^\w]", "", value, flags=re.UNICODE)
     return value
 
 
@@ -106,6 +139,15 @@ def _normalize_barcode(value: str | None) -> str | None:
     if len(raw) == 12:
         return raw + compute_ean13_check_digit(raw)
     return raw
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _looks_like_email(value: str | None) -> bool:
+    if value is None:
+        return False
+    return bool(_EMAIL_RE.match(value.strip().lower()))
 
 
 def _coerce_status(value: str | None) -> object:
@@ -318,7 +360,11 @@ async def build_preview(
         {str(row.data.location).strip() for row in rows if row.data.location}
     )
     unique_user_emails = sorted(
-        {str(row.data.responsible_username).strip() for row in rows if row.data.responsible_username}
+        {
+            str(row.data.responsible_username).strip()
+            for row in rows
+            if row.data.responsible_username and _looks_like_email(str(row.data.responsible_username))
+        }
     )
 
     async with httpx.AsyncClient(timeout=20) as client:
@@ -438,12 +484,15 @@ async def build_preview(
                 warnings.append("location_missing_will_create")
 
         if data.responsible_id is None and data.responsible_username:
-            resolved = user_email_to_id.get(data.responsible_username.strip().lower())
-            if resolved is not None:
-                data.responsible_id = resolved
-                warnings.append("responsible_resolved_by_email")
+            if _looks_like_email(data.responsible_username):
+                resolved = user_email_to_id.get(data.responsible_username.strip().lower())
+                if resolved is not None:
+                    data.responsible_id = resolved
+                    warnings.append("responsible_resolved_by_email")
+                else:
+                    warnings.append("responsible_missing_will_create")
             else:
-                warnings.append("responsible_missing_will_create")
+                warnings.append("responsible_username_not_email_ignored")
 
         if errors:
             action = "error"
@@ -543,7 +592,11 @@ async def confirm_import(
 
                 # Resolve / create responsible user
                 responsible_id = data.responsible_id
-                email = data.responsible_username.strip().lower() if data.responsible_username else None
+                email = (
+                    data.responsible_username.strip().lower()
+                    if data.responsible_username and _looks_like_email(data.responsible_username)
+                    else None
+                )
                 if responsible_id is None and email:
                     responsible_id = user_email_to_id.get(email)
                     if responsible_id is None:
@@ -804,7 +857,7 @@ def confirm_import_stream(
                     responsible_id = data.responsible_id
                     email = (
                         data.responsible_username.strip().lower()
-                        if data.responsible_username
+                        if data.responsible_username and _looks_like_email(data.responsible_username)
                         else None
                     )
                     if responsible_id is None and email:
